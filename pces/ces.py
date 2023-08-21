@@ -1,41 +1,45 @@
 import warnings
-from survey import Survey
-from requester import Requester
-from utilities import clean_url, combine_kwargs
-from project import Project
-from paginated_list import PaginatedList
+
 from account import Account
-from term import Term
 from course import Course
+from node import Node
+from node_mapper import NodeMapper
+from paginated_list import PaginatedList
+from project import Project
+from requester import Requester
+from survey import Survey
+from term import Term
 from user import User
+from utilities import clean_url, combine_kwargs
 
 
 class CES(object):
     """
-    The main class to be instantiated to provide access to Canvas's API.
+    The main class to be instantiated to provide access to CES's API.
     """
 
     def __init__(self, base_url, access_token):
         """
-        :param base_url: The base URL of the CES instance's API.
-        :type base_url: str
-        :param access_token: The API key to authenticate requests with.
-        :type access_token: str
+        Params:
+            base_url (str): The base URL of the CES instance being accessed.
+
+            access_token (str): The API key used to authenticate requests.
         """
-        if "api/v1" in base_url:
+
+        if "api/" in base_url:
             raise ValueError(
-                "`base_url` should not specify an API version. Remove trailing /api/v1/"
+                "`base_url` should not specify API. Remove trailing /api/"
             )
 
         if "http://" in base_url:
             warnings.warn(
-                "Canvas may respond unexpectedly when making requests to HTTP "
+                "CES may respond unexpectedly when making requests to HTTP "
                 "URLs. If possible, please use HTTPS."
             )
 
         if not base_url.strip():
             warnings.warn(
-                "Canvas needs a valid URL, please provide a non-blank `base_url`."
+                "CES needs a valid URL, please provide a non-blank 'base_url'."
             )
 
         if "://" not in base_url:
@@ -44,40 +48,44 @@ class CES(object):
                 "Please provide a valid HTTP or HTTPS URL if possible."
             )
 
-        # Ensure that the user-supplied access token and base_url contain no leading or
-        # trailing spaces that might cause issues when communicating with the API.
+        # Ensure that the user-supplied access token and base_url
+        # contain no leading or trailing spaces that might cause issues
+        # when communicating with the API.
         access_token = access_token.strip()
         base_url = clean_url(base_url)
 
         self.__requester = Requester(base_url, access_token)
 
-    def get_account(self, **kwargs):
+    def get_account(self):
         """
         Gets the account for your token.
 
         GET /api/account
 
-        Returns an Account
-
+        Returns:
+            Account
         """
+
         response = self.__requester.request(
             "GET",
-            "account",
-            _kwargs=combine_kwargs(**kwargs)
-        )
+            "account"
+            )
         return Account(self.__requester, response.json())
 
     def get_course(self, id, use_unique_id=False, **kwargs):
         """
-        Gets the account for your token.
+        Gets a course for the account by course id
+        or course uniqueid.
 
-        GET /api/courses?uniqueId={uniqueId}
-        OR
-        GET /api/courses/{id}
 
-        Returns a Course
+        API calls:
+            GET /api/courses?uniqueId={uniqueId}
+            GET /api/courses/{id}
 
+        Returns:
+            Course
         """
+
         if use_unique_id:
             kwargs["uniqueId"] = id
             url = "courses"
@@ -95,9 +103,14 @@ class CES(object):
         """
         Gets a list of project courses for the account.
 
-        GET /api/courses
+        API call:
+            GET /api/courses
 
-        Returns a PaginatedList of Courses
+        Optional parameters (kwargs):
+            page (int)
+
+        Returns:
+            PaginatedList(Courses)
         """
 
         return PaginatedList(
@@ -113,9 +126,13 @@ class CES(object):
         """
         Gets a list of subaccounts for the account.
 
-        GET /api/subAccounts
+        API call:
+            GET /api/subAccounts
 
-        Returns a PaginatedList of Accounts
+        Optional parameters (kwargs):
+            page (int)
+
+        Returns a PaginatedList of Accounts.
         """
 
         return PaginatedList(
@@ -131,9 +148,13 @@ class CES(object):
         """
         Gets a list of terms for the account.
 
-        GET /api/terms
+        API call:
+            GET /api/terms
 
-        Returns a PaginatedList of Terms
+        Optional parameters (kwargs):
+            page (int)
+
+        Returns a PaginatedList of Terms.
         """
 
         return PaginatedList(
@@ -149,11 +170,12 @@ class CES(object):
         """
         User has in-progress survey for all projects in the account.
 
+        API call:
+            GET /api/users/hasInProgressSurvey?username={username}
 
-        GET /api/users/hasInProgressSurvey?username={username}
-
-        Returns a bool
+        Returns a bool.
         """
+
         response = self.__requester.request(
             "GET",
             "users/hasInProgressSurvey?username={}".format(username)
@@ -162,12 +184,15 @@ class CES(object):
 
     def user_has_grade_block(self, username):
         """
-        User has in-progress survey in all course project with active grades blocked.
+        User has in-progress survey in all course project with
+        active grades blocked.
 
-        GET /api/users/hasGradeBlock?username={username}
+        API call:
+            GET /api/users/hasGradeBlock?username={username}
 
-        Returns a bool
+        Returns a bool.
         """
+
         response = self.__requester.request(
             "GET",
             "users/hasGradeBlock?username={}".format(username)
@@ -178,9 +203,13 @@ class CES(object):
         """
         Gets a list of surveys for the Account.
 
-        GET /api/surveys
+        API call:
+            GET /api/surveys
 
-        Returns a PaginatedList of Surveys
+        Optional parameters (kwargs):
+            page (int)
+
+        Returns a PaginatedList of Surveys.
         """
 
         return PaginatedList(
@@ -192,31 +221,28 @@ class CES(object):
             _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_project(self, id, **kwargs):
-        """
-        Gets a single project for the account.
-
-        GET /api/projects/{id}
-
-        Returns a Project
-        """
-        response = self.__requester.request(
-            "GET",
-            "projects/{}".format(id),
-            _kwargs=combine_kwargs(**kwargs)
-        )
-        return Project(self.__requester, response.json())
-
     def get_projects(self, filters=None, **kwargs):
         """
-        Retrieve a project by its ID.
+        List all the projects for an account, filter by project type status,
+        or ended since.
 
-        :calls: `GET /api/projects/:id \
+        API call:
+            GET /api/projects
 
-        :param course: The object or ID of the project to retrieve.
+        Optional parameters (kwargs):
+            projectType (int)
+                1 = Course, 2 = General
+            projectStatus (int)
+                1 = Not-Deployed, 2 = Deployed-NotStarted,
+                3 = In-Progress, 4 = Ended
+            endedSince (str)
+                If this argument is set, the response will only include
+                projects that were ended after the specified DateTime.
+                The value must be formatted as ISO 8601 YYYY-MM-DDTHH:MM:SSZ.
+            page (int)
+            includeSubaccounts (bool)
 
-
-        :rtype: :project:`pces.project.Project`
+        Returns a PaginatedList of Projects.
         """
 
         return PaginatedList(
@@ -227,14 +253,31 @@ class CES(object):
             filters=filters,
             _kwargs=combine_kwargs(**kwargs)
             )
-    
+
+    def get_project(self, id, **kwargs):
+        """
+        Gets a single project for the account.
+
+        API call:
+            GET /api/projects/{id}
+
+        Returns a Project.
+        """
+
+        response = self.__requester.request(
+            "GET",
+            "projects/{}".format(id),
+            _kwargs=combine_kwargs(**kwargs)
+        )
+        return Project(self.__requester, response.json())
+
     def get_users(self, filters=None, **kwargs):
         """
         Gets a list of users in the account
 
         GET /api/users
 
-        Returns a PaginatedList of Users
+        Returns a PaginatedList of Users.
         """
 
         return PaginatedList(
@@ -250,9 +293,9 @@ class CES(object):
         """
         Gets a list of metadata for the account by course.
 
-        GET /api/users/metadata?username={username}&page={page}
+        GET /api/users/metadata
 
-        Returns a Metadata
+        Returns a Metadata.
         """
         response = self.__requester.request(
             "GET",
@@ -260,3 +303,51 @@ class CES(object):
             _kwargs=combine_kwargs(**kwargs)
         )
         return User(self.__requester, response.json())
+
+    def get_nodes(self, filters=None, **kwargs):
+        """
+        Gets list of nodes.
+
+        GET /api/nodes
+
+        Returns a PaginatedList of Nodes.
+        """
+
+        return PaginatedList(
+            Node,
+            self.__requester,
+            "GET",
+            "nodes",
+            filters=filters,
+            _kwargs=combine_kwargs(**kwargs)
+            )
+
+    def get_node(self, id):
+        """
+        Gets a node.
+
+        GET /api/nodes/{id}
+
+        Returns a single Nodes.
+        """
+
+        response = self.__requester.request(
+            "GET",
+            "nodes/{}".format(id)
+        )
+        return Node(self.__requester, response.json())
+
+    def get_node_mapper(self, id):
+        """
+        Gets a single NodeMapper.
+
+        GET /api/nodes
+
+        Returns a single NodeMapper.
+        """
+
+        response = self.__requester.request(
+            "GET",
+            "nodemapper/{}".format(id)
+        )
+        return NodeMapper(self.__requester, response.json())

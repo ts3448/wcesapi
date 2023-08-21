@@ -14,7 +14,8 @@ class PaginatedList(object):
         if hasattr(self._content_class, name) and callable(getattr(self._content_class, name)):
             def method(*args, **kwargs):
                 results = []
-                return_type = kwargs.pop('return_type', None)  # Extract the return_type argument
+                # Extract the return_type argument
+                return_type = kwargs.pop('return_type', None)
 
                 for _, row in self._df.iterrows():
                     # Pass the current PaginatedList as the context

@@ -186,7 +186,6 @@ class Requester(object):
         # Call the request method
         logger.info("Request: {method} {url}".format(method=method, url=full_url))
 
-
         if _kwargs:
             logger.debug("Data: {data}".format(data=pformat(_kwargs)))
 
@@ -199,7 +198,6 @@ class Requester(object):
         logger.debug(
             "Headers: {headers}"
         )
-        
 
         try:
             logger.debug(
