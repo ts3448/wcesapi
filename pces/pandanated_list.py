@@ -2,24 +2,26 @@ import re
 import pandas as pd
 
 
-class PaginatedList(object):
+class PandanatedList(object):
     """
-    Abstracts `pagination of Canvas API \
-    <https://canvas.instructure.com/doc/api/file.pagination.html>`_.
+    Abstracts both pagination of the CES API and the Pandas DataFrame object.
     """
     def __str__(self):
-        return str(self._df)
+        return str(self.dataframe)
 
     def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+
         if hasattr(self._content_class, name) and callable(getattr(self._content_class, name)):
             def method(*args, **kwargs):
                 results = []
                 # Extract the return_type argument
                 return_type = kwargs.pop('return_type', None)
 
-                for _, row in self._df.iterrows():
+                for _, row in self.dataframe.iterrows():
                     # Pass the current PaginatedList as the context
-                    obj = self._content_class(self._requester, row.to_dict(), context=self)
+                    obj = self._content_class(self._requester, row.to_dict(), context=self._context)
                     result = getattr(obj, name)(*args, **kwargs)
 
                     if return_type:
@@ -28,8 +30,8 @@ class PaginatedList(object):
                             results.append(context_result.dataframe)
                         continue
 
-                    if isinstance(result, PaginatedList):
-                        results.append(result._df)
+                    if isinstance(result, PandanatedList):
+                        results.append(result.dataframe)
                     elif isinstance(result, object):
                         results.append(result.dataframe)
 
@@ -40,11 +42,11 @@ class PaginatedList(object):
     def __getitem__(self, item):
         # If item is an integer or slice, return rows from the DataFrame
         if isinstance(item, (int, slice)):
-            return self._df.iloc[item]
+            return self.dataframe.iloc[item]
         # If item is a string, return the column with that name
         elif isinstance(item, str):
-            if item in self._df.columns:
-                return self._df[item]
+            if item in self.dataframe.columns:
+                return self.dataframe[item]
             else:
                 raise KeyError(f"Column '{item}' not found in the DataFrame.")
         else:
@@ -61,7 +63,7 @@ class PaginatedList(object):
         context=None,
         **kwargs
     ):
-        self._df = pd.DataFrame()
+        self.dataframe = pd.DataFrame()
         self._filters = filters or {}
         self._context = context
 
@@ -79,7 +81,7 @@ class PaginatedList(object):
         self._grow()
 
     def __iter__(self):
-        for _, row in self._df.iterrows():
+        for _, row in self.dataframe.iterrows():
             yield row
 
     def __repr__(self):
@@ -124,7 +126,7 @@ class PaginatedList(object):
         if self._filters:
             new_elements = self.apply_filters(new_elements, self._filters)
         new_df = pd.DataFrame(new_elements)
-        self._df = pd.concat([self._df, new_df], ignore_index=True)
+        self.dataframe = pd.concat([self.dataframe, new_df], ignore_index=True)
 
     def _has_next(self):
         return self._next_url is not None
@@ -157,9 +159,6 @@ class PaginatedList(object):
 
         # Helper function to handle non-numeric filters
         def handle_non_numeric_filter(series, filter_value):
-            if filter_value.startswith(('!=', '≠', '<>')):
-                excluded_value = re.sub(operators_pattern, '', filter_value)
-                return series != excluded_value
             regex_pattern = '^' + filter_value.replace('*', '.*') + '$'
             return series.str.match(regex_pattern)
 
@@ -167,20 +166,34 @@ class PaginatedList(object):
         if not filters:
             return df
 
-        # Main filtering logic
-        mask = pd.Series([True] * len(df))
+        positive_masks = []
+        negative_masks = []
+
         for filter_key, filter_values in filters.items():
             if filter_key not in df.columns:
                 print(f"DataFrame does not have a column named {filter_key}")
                 continue
 
-            column_mask = pd.Series([False] * len(df))
             for filter_value in filter_values:
                 if is_numeric(re.sub(operators_pattern, '', filter_value)):
-                    column_mask |= handle_numeric_filter(df[filter_key], filter_value)
+                    positive_masks.append(handle_numeric_filter(df[filter_key], filter_value))
                 else:
-                    column_mask |= handle_non_numeric_filter(df[filter_key], filter_value)
+                    if filter_value.startswith(('!=', '≠', '<>')):
+                        negative_masks.append((filter_key, re.sub(operators_pattern, '', filter_value)))
+                    else:
+                        positive_masks.append(handle_non_numeric_filter(df[filter_key], filter_value))
 
-            mask &= column_mask
+        # Combine all positive masks with 'or'
+        final_positive_mask = pd.Series([False] * len(df))
+        for mask in positive_masks:
+            final_positive_mask |= mask
 
-        return df[mask].reset_index(drop=True)
+        # Only consider rows that passed the positive filters for the negative filtering
+        filtered_df = df[final_positive_mask].reset_index(drop=True)
+
+        # Combine all negative masks with 'and' within a key but 'or' between keys
+        for key, neg_value in negative_masks:
+            neg_mask = ~handle_non_numeric_filter(filtered_df[key], neg_value)
+            filtered_df = filtered_df[neg_mask].reset_index(drop=True)
+
+        return filtered_df.reset_index(drop=True)

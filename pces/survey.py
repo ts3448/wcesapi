@@ -1,8 +1,8 @@
-from ces_object import CESObject
-from paginated_list import PaginatedList
-from question import Question
-from response_rate import ResponseRate
-from utilities import combine_kwargs
+from pces.ces_object import CESObject
+from pces.pandanated_list import PandanatedList
+from pces.question import Question
+from pces.response_rate import ResponseRate
+from pces.utilities import combine_kwargs
 
 
 class Survey(CESObject):
@@ -20,10 +20,10 @@ class Survey(CESObject):
         Accepted paramters (kwargs):
             page (int)
 
-        Returns a PaginatedList of Questions
+        Returns a PandanatedList of Questions
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Question,
             self.__requester,
             "GET",
@@ -38,10 +38,10 @@ class Survey(CESObject):
 
         GET /api/SurveyResponseRate/{surveyId}
 
-        Returns a PaginatedList of ResponseRates
+        Returns a PandanatedList of ResponseRates
         """
 
-        return PaginatedList(
+        return PandanatedList(
             ResponseRate,
             self.__requester,
             "GET",

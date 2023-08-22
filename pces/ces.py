@@ -1,16 +1,17 @@
 import warnings
 
-from account import Account
-from course import Course
-from node import Node
-from node_mapper import NodeMapper
-from paginated_list import PaginatedList
-from project import Project
-from requester import Requester
-from survey import Survey
-from term import Term
-from user import User
-from utilities import clean_url, combine_kwargs
+from pces.account import Account
+from pces.course import Course
+from pces.node import Node
+from pces.node_mapper import NodeMapper
+from pces.pandanated_list import PandanatedList
+from pces.project import Project
+from pces.requester import Requester
+from pces.survey import Survey
+from pces.term import Term
+from pces.user import User
+from pces.metadata import Metadata
+from pces.utilities import clean_url, combine_kwargs
 
 
 class CES(object):
@@ -54,7 +55,7 @@ class CES(object):
         access_token = access_token.strip()
         base_url = clean_url(base_url)
 
-        self.__requester = Requester(base_url, access_token)
+        self._requester = Requester(base_url, access_token)
 
     def get_account(self):
         """
@@ -72,7 +73,7 @@ class CES(object):
             )
         return Account(self.__requester, response.json())
 
-    def get_course(self, id, use_unique_id=False, **kwargs):
+    def get_course(self, id, use_unique_id=False):
         """
         Gets a course for the account by course id
         or course uniqueid.
@@ -82,10 +83,16 @@ class CES(object):
             GET /api/courses?uniqueId={uniqueId}
             GET /api/courses/{id}
 
+        Arguments:
+            id (int OR str): the id or unique id of the course to find.
+
+            use_unique_id (bool): whether or not to use the unique id.
+                Defaults to "False".
+
         Returns:
             Course
         """
-
+        kwargs = {}
         if use_unique_id:
             kwargs["uniqueId"] = id
             url = "courses"
@@ -95,7 +102,7 @@ class CES(object):
         response = self.__requester.request(
             "GET",
             url,
-            _kwargs=combine_kwargs(**kwargs)
+            _kwargs=combine_kwargs(kwargs)
         )
         return Course(self.__requester, response.json())
 
@@ -106,14 +113,16 @@ class CES(object):
         API call:
             GET /api/courses
 
-        Optional parameters (kwargs):
-            page (int)
+        Params:
+            filters (dict): attributes and values to apply as a filter.
+
+            **kwargs (dict): see API documentation for optional arguments.
 
         Returns:
-            PaginatedList(Courses)
+            PandanatedList(Courses)
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Course,
             self.__requester,
             "GET",
@@ -129,13 +138,16 @@ class CES(object):
         API call:
             GET /api/subAccounts
 
-        Optional parameters (kwargs):
-            page (int)
+        Params:
+            filters (dict): attributes and values to apply as a filter.
 
-        Returns a PaginatedList of Accounts.
+            **kwargs (dict): see API documentation for optional arguments.
+
+        Returns:
+            PandanatedList(Account)
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Account,
             self.__requester,
             "GET",
@@ -151,13 +163,16 @@ class CES(object):
         API call:
             GET /api/terms
 
-        Optional parameters (kwargs):
-            page (int)
+        Params:
+            filters (dict): attributes and values to apply as a filter.
 
-        Returns a PaginatedList of Terms.
+            **kwargs (dict): see API documentation for optional arguments.
+
+        Returns:
+            PandanatedList(Term)
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Term,
             self.__requester,
             "GET",
@@ -173,7 +188,11 @@ class CES(object):
         API call:
             GET /api/users/hasInProgressSurvey?username={username}
 
-        Returns a bool.
+        Params:
+            username (string): username of account to search
+
+        Returns:
+            bool: True if the user has a survey in progress.
         """
 
         response = self.__requester.request(
@@ -190,7 +209,12 @@ class CES(object):
         API call:
             GET /api/users/hasGradeBlock?username={username}
 
-        Returns a bool.
+        Params:
+            username (string): username of account to search
+
+        Returns:
+            bool: True if the user has in-progress survey in all
+            course project with active grades blocked.
         """
 
         response = self.__requester.request(
@@ -206,13 +230,16 @@ class CES(object):
         API call:
             GET /api/surveys
 
-        Optional parameters (kwargs):
-            page (int)
+        Params:
+            filters (dict): attributes and values to apply as a filter.
 
-        Returns a PaginatedList of Surveys.
+            **kwargs (dict): see API documentation for optional arguments.
+
+        Returns:
+            PandanatedList(Surveys)
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Survey,
             self.__requester,
             "GET",
@@ -229,45 +256,41 @@ class CES(object):
         API call:
             GET /api/projects
 
-        Optional parameters (kwargs):
-            projectType (int)
-                1 = Course, 2 = General
-            projectStatus (int)
-                1 = Not-Deployed, 2 = Deployed-NotStarted,
-                3 = In-Progress, 4 = Ended
-            endedSince (str)
-                If this argument is set, the response will only include
-                projects that were ended after the specified DateTime.
-                The value must be formatted as ISO 8601 YYYY-MM-DDTHH:MM:SSZ.
-            page (int)
-            includeSubaccounts (bool)
+        Params:
+            filters (dict): attributes and values to apply as a filter.
 
-        Returns a PaginatedList of Projects.
+            **kwargs (dict): see API documentation for optional arguments.
+
+        Returns:
+            PandanatedList(Projects)
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Project,
-            self.__requester,
+            self._requester,
             "GET",
             "projects",
             filters=filters,
             _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_project(self, id, **kwargs):
+    def get_project(self, id):
         """
         Gets a single project for the account.
 
         API call:
             GET /api/projects/{id}
 
-        Returns a Project.
+        Params:
+            id (int): id of a project.
+
+        Return:
+            Project
         """
 
         response = self.__requester.request(
             "GET",
-            "projects/{}".format(id),
-            _kwargs=combine_kwargs(**kwargs)
+            "projects/{}".format(id)
         )
         return Project(self.__requester, response.json())
 
@@ -275,12 +298,19 @@ class CES(object):
         """
         Gets a list of users in the account
 
-        GET /api/users
+        API call:
+            GET /api/users
 
-        Returns a PaginatedList of Users.
+        Params:
+            filters (dict): attributes and values to apply as a filter.
+
+            **kwargs (dict): see API documentation for optional arguments.
+
+        Return:
+            PandanatedList(User)
         """
 
-        return PaginatedList(
+        return PandanatedList(
             User,
             self.__requester,
             "GET",
@@ -289,31 +319,48 @@ class CES(object):
             _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_user_metadata(self, username, **kwargs):
+    def get_user_metadata(self, username, filters=None, **kwargs):
         """
-        Gets a list of metadata for the account by course.
+        Gets a list of metadata for the user by course.
 
-        GET /api/users/metadata
+        API call:
+            GET /api/users/metadata
 
-        Returns a Metadata.
+        Params:
+            filters (dict): attributes and values to apply as a filter.
+
+            **kwargs (dict): see API documentation for optional arguments.
+
+        Returns:
+            PandanatedList(Metadata)
         """
-        response = self.__requester.request(
+
+        return PandanatedList(
+            Metadata,
+            self.__requester,
             "GET",
             "users/metadata?username={}".format(username),
+            filters=filters,
             _kwargs=combine_kwargs(**kwargs)
-        )
-        return User(self.__requester, response.json())
+            )
 
     def get_nodes(self, filters=None, **kwargs):
         """
         Gets list of nodes.
 
-        GET /api/nodes
+        API call:
+            GET /api/nodes
 
-        Returns a PaginatedList of Nodes.
+        Params:
+            filters (dict): attributes and values to apply as a filter.
+
+            **kwargs (dict): see API documentation for optional arguments.
+
+        Returns:
+            PandanatedList(Nodes)
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Node,
             self.__requester,
             "GET",
@@ -326,9 +373,14 @@ class CES(object):
         """
         Gets a node.
 
-        GET /api/nodes/{id}
+        API call:
+            GET /api/nodes/{id}
 
-        Returns a single Nodes.
+        Params:
+            id (int): id of the node.
+
+        Returns:
+            Node
         """
 
         response = self.__requester.request(
@@ -341,9 +393,14 @@ class CES(object):
         """
         Gets a single NodeMapper.
 
-        GET /api/nodes
+        API call:
+            GET /api/nodes
 
-        Returns a single NodeMapper.
+        Params:
+            id (int): id of the node mapper
+
+        Returns:
+            NodeMapper
         """
 
         response = self.__requester.request(

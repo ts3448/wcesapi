@@ -1,8 +1,8 @@
-from ces_object import CESObject
-from paginated_list import PaginatedList
-from project import Project
-from utilities import combine_kwargs
-from metadata import Metadata
+from pces.ces_object import CESObject
+from pces.pandanated_list import PandanatedList
+from pces.project import Project
+from pces.utilities import combine_kwargs
+from pces.metadata import Metadata
 
 
 class Course(CESObject):
@@ -13,12 +13,19 @@ class Course(CESObject):
         """
         Gets a list of projects for a course in the account.
 
-        GET /api/courses/{courseId}/projects
+        API call:
+            GET /api/courses/{courseId}/projects
 
-        Returns a PaginatedList of Projects
+        Params:
+            filters (dict): attributes and value pairs to apply as a filter.
+
+            **kwargs:
+                page (int)
+
+        Returns a PandanatedList of Projects
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Project,
             self.__requester,
             "GET",
@@ -40,5 +47,3 @@ class Course(CESObject):
             "courses/{}/metadata".format(self.id)
             )
         return Metadata(self.__requester, response.json())
-
-

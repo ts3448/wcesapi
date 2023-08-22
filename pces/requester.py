@@ -3,7 +3,7 @@ from datetime import datetime
 from pprint import pformat
 
 import requests
-from errors import (
+from pces.errors import (
     UnauthorizedAccess,
     ResourceDoesNotExist,
     UnprocessableEntity,

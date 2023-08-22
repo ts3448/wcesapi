@@ -1,12 +1,13 @@
-from ces_object import CESObject
-from paginated_list import PaginatedList
-from nonrespondent import NonRespondent
-from project_survey import ProjectSurvey
-from project_course import ProjectCourse
-from respondent import Respondent
-from response_rate import ResponseRate
-from raw_data_general import RawDataGeneral
-from utilities import combine_kwargs
+from pces.ces_object import CESObject
+from pces.pandanated_list import PandanatedList
+from pces.nonrespondent import NonRespondent
+from pces.overall_response_rate import OverallResponseRate
+from pces.project_survey import ProjectSurvey
+from pces.project_course import ProjectCourse
+from pces.respondent import Respondent
+from pces.response_rate import ResponseRate
+from pces.raw_data_general import RawDataGeneral
+from pces.utilities import combine_kwargs
 
 
 class Project(CESObject):
@@ -19,19 +20,20 @@ class Project(CESObject):
 
         API call:
             GET /api/projects/{projectId}/surveys
-        
-         Optional parameters (kwargs):
-            page (int)    
 
-        Returns a PaginatedList of ProjectSurveys
+         Optional parameters (kwargs):
+            page (int)
+
+        Returns a PandanatedList of ProjectSurveys
         """
 
-        return PaginatedList(
+        return PandanatedList(
             ProjectSurvey,
-            self.__requester,
+            self._requester,
             "GET",
             "projects/{}/surveys".format(self.id),
             filters=filters,
+            context=self,
             _kwargs=combine_kwargs(**kwargs)
             )
 
@@ -41,15 +43,16 @@ class Project(CESObject):
 
         GET /api/projects/{projectId}/courses
 
-        Returns a PaginatedList of ProjectCourse
+        Returns a PandanatedList of ProjectCourse
         """
 
-        return PaginatedList(
+        return PandanatedList(
             ProjectCourse,
-            self.__requester,
+            self._requester,
             "GET",
             "projects/{}/courses".format(self.id),
             filters=filters,
+            context=self,
             _kwargs=combine_kwargs(**kwargs)
             )
 
@@ -62,96 +65,103 @@ class Project(CESObject):
         Returns a ProjectCourse
         """
 
-        return PaginatedList(
+        return PandanatedList(
             ProjectCourse,
-            self.__requester,
+            self._requester,
             "GET",
             "projects/{}/courses/{}".format(self.id, id),
+            context=self,
             _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_respondents(self, filters=None):
+    def get_respondents(self, filters=None, **kwargs):
         """
         Gets respondents in a project for the account.
 
         GET /api/projects/{projectId}/respondents
 
-        Returns a PaginatedList of Respondents
+        Returns a PandanatedList of Respondents
         """
 
-        return PaginatedList(
+        return PandanatedList(
             Respondent,
             self.__requester,
             "GET",
             "projects/{}/respondents".format(self.id),
-            filters=filters
+            context=self,
+            filters=filters,
+            _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_non_respondents(self, filters=None):
+    def get_non_respondents(self, filters=None, **kwargs):
         """
         Gets non-respondents in a project for the account.
 
         GET /api/projects/{projectId}/nonRespondents
 
-        Returns a PaginatedList of NonRespondents
+        Returns a PandanatedList of NonRespondents
         """
 
-        return PaginatedList(
+        return PandanatedList(
             NonRespondent,
-            self.__requester,
+            self._requester,
             "GET",
             "projects/{}/nonRespondents".format(self.id),
-            filters=filters
+            filters=filters,
+            context=self,
+            _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_response_rate(self, filters=None):
+    def get_response_rate(self, filters=None, **kwargs):
         """
         Gets response rates for a project for the account.
 
         GET /api/projects/{projectId}/responseRate
 
-        Returns a PaginatedList of ResponseRate
+        Returns a PandanatedList of ResponseRate
         """
 
-        return PaginatedList(
+        return PandanatedList(
             ResponseRate,
-            self.__requester,
+            self._requester,
             "GET",
             "projects/{}/responseRate".format(self.id),
-            filters=filters
+            filters=filters,
+            context=self,
+            _kwargs=combine_kwargs(**kwargs)
             )
 
-    # need to see example response to know if it's different
-    # from ResponseRate object
-    # def get_overall_response_rate(self):
-    #     """
-    #     Gets response rates for a project for the account.
+    def get_overall_response_rate(self):
+        """
+        Gets response rates for a project for the account.
 
-    #     GET /api/projects/{projectId}/OverallResponseRate
+        GET /api/projects/{projectId}/OverallResponseRate
 
-    #     Returns a ResponseRate
-    #     """
+        Returns a ResponseRate
+        """
 
-    #     return PaginatedList(
-    #         ResponseRate,
-    #         self.__requester,
-    #         "GET",
-    #         "projects/{}/responseRate".format(self.id)
-    #         )
+        return PandanatedList(
+            OverallResponseRate,
+            self._requester,
+            "GET",
+            "projects/{}/OverallResponseRate".format(self.id)
+            )
 
-    def get_raw_data(self, filters=None):
+    def get_raw_data(self, filters=None, **kwargs):
         """
         Gets response rates for a project for the account.
 
         GET /api/projects/{projectId}/general/rawData
 
-        Returns a PaginatedList of RawDataGeneral
+        Returns a PandanatedList of RawDataGeneral
         """
 
-        return PaginatedList(
+        return PandanatedList(
             RawDataGeneral,
-            self.__requester,
+            self._requester,
             "GET",
             "projects/{}/general/rawData".format(self.id),
-            filters=filters
+            filters=filters,
+            context=self,
+            _kwargs=combine_kwargs(**kwargs)
             )
