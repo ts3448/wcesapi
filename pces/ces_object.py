@@ -9,10 +9,14 @@ class CESObject(object):
     values as a single row.
     """
 
+    @property
+    def df(self):
+        return self._df
+
     def __getattr__(self, name):
         # Check if attribute exists in the main dataframe
-        if name in self.df.columns:
-            return self.df[name].iloc[0]
+        if name in self._df.columns:
+            return self._df[name].iloc[0]
 
         # If attribute doesn't exist, raise an AttributeError
         raise AttributeError(
@@ -38,6 +42,7 @@ class CESObject(object):
         """
         self._requester = requester
         self._context = context
+        self._shared_columns = {}
 
         self.set_attributes(attributes)
 
@@ -45,7 +50,7 @@ class CESObject(object):
         classname = self.__class__.__name__
 
         # Extracting column names from the DataFrame
-        attrs = ", ".join(self.df.columns)
+        attrs = ", ".join(self._df.columns)
 
         return "{}({})".format(classname, attrs)
 
@@ -61,9 +66,9 @@ class CESObject(object):
         # Check if 'resultList' key exists in attributes
         if 'resultList' in attributes:
             # Use the resultList for the dataframe
-            self.df = pd.DataFrame(attributes['resultList'])
+            self._df = pd.DataFrame(attributes['resultList'])
         else:
-            self.df = pd.DataFrame([attributes])
+            self._df = pd.DataFrame([attributes])
 
         # Convert specific columns to datetime format
         date_columns = [
@@ -85,10 +90,10 @@ class CESObject(object):
             "submitDate"
             ]
         for col in date_columns:
-            if col in self.df.columns:
-                self.df[col] = pd.to_datetime(self.df[col])
+            if col in self._df.columns:
+                self._df[col] = pd.to_datetime(self._df[col])
 
-    def get_context(self, return_type):
+    def get_context(self, return_type, join=False):
         """
         Retrieve the context (object) based on the return_type.
         Recursively called until the context is None (only true
@@ -96,19 +101,34 @@ class CESObject(object):
 
         Params:
             return_type (str): Name of the class to return.
+            join (bool): Whether to join the dataframes or not.
 
         Returns:
             self (object): The object with name that matches the return_type.
-
-        Throws:
-            ValueError: Thrown if context is not found in the chain of methods.
-
         """
-        if return_type == type(self).__name__:
-            return self
-        elif self._context:
-            return self._context.get_context(return_type)
-        else:
-            raise ValueError(
-                "Context of type '{}' not found in the method chain."
-                ).format(return_type)
+        if join:
+            # If the current context has a _df attribute and the context exists
+            if hasattr(self, "_df") and self._context:
+                # Extracting column names based on the class names
+                context_column, self_column = self._shared_columns.get(type(self).__name__, (None, None))
+                print(self._shared_columns)
+                # Ensure we have both columns extracted
+                if context_column and self_column:
+                    # Recursively get concatenated dataframe from the context
+                    context_df = self._context.get_context(return_type, join=True)
+                    # Join the DataFrames on their respective columns
+                    joined_df = pd.merge(self._df, context_df, left_on=self_column, right_on=context_column)
+                    return joined_df
+
+            elif hasattr(self, "_df"):  # Base case: return the current df if it exists
+                return self._df
+
+        else:  # The original behavior of the method
+            if return_type == type(self).__name__:
+                return self
+            elif self._context:
+                return self._context.get_context(return_type)
+            else:
+                raise ValueError(
+                    "Context of type '{}' not found in the method chain."
+                    ).format(return_type)

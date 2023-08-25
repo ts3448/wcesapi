@@ -26,6 +26,9 @@ class Project(CESObject):
 
         Returns a PandanatedList of ProjectSurveys
         """
+        extra_attribs = {
+            "projectId": self.id
+            }
 
         return PandanatedList(
             ProjectSurvey,
@@ -34,6 +37,7 @@ class Project(CESObject):
             "projects/{}/surveys".format(self.id),
             filters=filters,
             context=self,
+            extra_attribs=extra_attribs,
             _kwargs=combine_kwargs(**kwargs)
             )
 
@@ -45,6 +49,9 @@ class Project(CESObject):
 
         Returns a PandanatedList of ProjectCourse
         """
+        extra_attribs = {
+            "projectId": self.id
+            }
 
         return PandanatedList(
             ProjectCourse,
@@ -53,6 +60,7 @@ class Project(CESObject):
             "projects/{}/courses".format(self.id),
             filters=filters,
             context=self,
+            extra_attribs=extra_attribs,
             _kwargs=combine_kwargs(**kwargs)
             )
 
@@ -64,6 +72,9 @@ class Project(CESObject):
 
         Returns a ProjectCourse
         """
+        extra_attribs = {
+            "projectId": self.id
+            }
 
         return PandanatedList(
             ProjectCourse,
@@ -71,6 +82,7 @@ class Project(CESObject):
             "GET",
             "projects/{}/courses/{}".format(self.id, id),
             context=self,
+            extra_attribs=extra_attribs,
             _kwargs=combine_kwargs(**kwargs)
             )
 
@@ -112,7 +124,7 @@ class Project(CESObject):
             _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_response_rate(self, filters=None, **kwargs):
+    def get_response_rate(self, filters=None, return_type=None, **kwargs):
         """
         Gets response rates for a project for the account.
 
@@ -120,6 +132,9 @@ class Project(CESObject):
 
         Returns a PandanatedList of ResponseRate
         """
+
+        if return_type:
+            kwargs["return_type"] = return_type
 
         return PandanatedList(
             ResponseRate,
@@ -131,7 +146,7 @@ class Project(CESObject):
             _kwargs=combine_kwargs(**kwargs)
             )
 
-    def get_overall_response_rate(self):
+    def get_overall_response_rate(self, filters=None, return_type=None, join=False):
         """
         Gets response rates for a project for the account.
 
@@ -139,12 +154,18 @@ class Project(CESObject):
 
         Returns a ResponseRate
         """
+        if return_type and join:
+            raise SyntaxError("Cannot use both return_type and join arguments")
 
         return PandanatedList(
             OverallResponseRate,
             self._requester,
             "GET",
-            "projects/{}/OverallResponseRate".format(self.id)
+            "projects/{}/OverallResponseRate".format(self.id),
+            filters=filters,
+            context=self,
+            return_type=return_type,
+            join=join
             )
 
     def get_raw_data(self, filters=None, **kwargs):
@@ -165,3 +186,14 @@ class Project(CESObject):
             context=self,
             _kwargs=combine_kwargs(**kwargs)
             )
+
+    # format is "Project Attribute"
+    _shared_columns = {
+        "OverallResponseRate": {"id": "projectId"},
+        "ProjectSurvey": {"id": "projectId"},
+        "RawDataGeneral": {"id": "projectId"},
+        "ResponseRate": {"id": "projectId"},
+        "NonRespondent": {"id": "projectId"},
+        "Respondent": {"id": "projectId"},
+        "ProjectCourse": {"id": "projectId"}
+        }

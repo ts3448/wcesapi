@@ -12,9 +12,6 @@ class PandanatedList(object):
         self._grow_until_complete()
         return self._df
 
-    def __str__(self):
-        return str(self.df)
-
     def __getattr__(self, name):
         # ensure all the data is available
         self._grow_until_complete()
@@ -24,29 +21,85 @@ class PandanatedList(object):
 
         if hasattr(self._content_class, name) and callable(getattr(self._content_class, name)):
             def method(*args, **kwargs):
+                
+                content_class = None
+                result_is_pandanated = False
+                result_is_content_class = False
                 results = []
-                # Extract the return_type argument
                 return_type = kwargs.pop('return_type', None)
 
-                for _, row in self.df.iterrows():
+                for index, row in self._df.iterrows():
                     # Pass the current PaginatedList as the context
                     obj = self._content_class(self._requester, row.to_dict(), context=self._context)
+                    
+                    # this is the result of the method call made on the
+                    # _content_class using the provided method and arguments.
                     result = getattr(obj, name)(*args, **kwargs)
 
-                    if return_type:
-                        context_result = obj.get_context(return_type)
-                        if context_result:
-                            results.append(context_result.dataframe)
+                    # on the first pass, determine if the result class will be
+                    # a PandanatedList or a single instance of whatever class
+                    # _content_class is.
+                    if index == 0:
+                        result_is_pandanated = isinstance(result, PandanatedList)
+                        result_is_content_class = isinstance(result, object) and not result_is_pandanated
+                        context_result = result._context
+
+                    # if the resulting dataframe is empty, do not append
+                    # the result data
+                    if result._df.empty:
                         continue
 
-                    if isinstance(result, PandanatedList):
-                        results.append(result.df)
-                    elif isinstance(result, object):
-                        results.append(result.dataframe)
+                    if result_is_pandanated:
+                        # if there is a return_type
+                        if self._join:
+                            context_df = obj.get_context(return_type, join=True)
+                            if context_df is not None:
+                                results.append(context_df)
+                                content_class = type(context_df)
+                            continue
+                        if return_type:
+                            context_result = obj.get_context(return_type)
+                            if context_result:
+                                results.append(context_result._df)
+                                content_class = type(context_result)
+                            continue
 
-                return pd.concat(results, ignore_index=True)
+                        results.append(result._df)
+                        content_class = result._content_class
+
+                    elif result_is_content_class:
+                        if self._join:
+                            context_df = obj.get_context(return_type, join=True)
+                            if context_df is not None:
+                                results.append(context_df)
+                                content_class = type(context_df)
+                            continue
+                        if return_type:
+                            context_result = obj.get_context(return_type)
+                            if context_result:
+                                results.append(context_result._df)
+                                content_class = type(context_result)
+                            continue
+
+                        results.append(result._df)
+                        content_class = type(result)
+                    else:
+                        raise ValueError("Unsupported response type.")
+
+                concat_results = pd.concat(results, ignore_index=True)
+                pandanated_list_results = PandanatedList(
+                    content_class,
+                    self._requester,
+                    request_method=None,
+                    first_url=None,
+                    context=context_result,
+                    skip_request=True)
+                pandanated_list_results._df = concat_results
+                pandanated_list_results._fetched_complete = True
+                return pandanated_list_results
             return method
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        raise AttributeError("Neither '{}' nor {} have an attribute '{}'"
+                             .format(type(self).__name__, self._content_class, name))
 
     def __init__(
         self,
@@ -57,6 +110,8 @@ class PandanatedList(object):
         filters=None,
         extra_attribs=None,
         context=None,
+        skip_request=False,
+        join=False,
         **kwargs
     ):
         self._df = pd.DataFrame()
@@ -73,12 +128,14 @@ class PandanatedList(object):
         self._extra_attribs = extra_attribs or {}
         self._request_method = request_method
         self._fetched_complete = False
+        self._join = join
 
         # Make the initial API call to populate the DataFrame with the first page of data
-        self._grow()
+        if not skip_request:
+            self._grow()
 
     def __iter__(self):
-        for _, row in self.df.iterrows():
+        for _, row in self._df.iterrows():
             yield row
 
     def __repr__(self):
@@ -123,7 +180,7 @@ class PandanatedList(object):
         if self._filters:
             new_elements = self.apply_filters(new_elements, self._filters)
         new_df = pd.DataFrame(new_elements)
-        self.df = pd.concat([self.df, new_df], ignore_index=True)
+        self._df = pd.concat([self._df, new_df], ignore_index=True)
 
     def _has_next(self):
         return self._next_url is not None
