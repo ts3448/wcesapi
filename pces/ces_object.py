@@ -11,8 +11,8 @@ class CESObject(object):
 
     def __getattr__(self, name):
         # Check if attribute exists in the main dataframe
-        if name in self.dataframe.columns:
-            return self.dataframe[name].iloc[0]
+        if name in self.df.columns:
+            return self.df[name].iloc[0]
 
         # If attribute doesn't exist, raise an AttributeError
         raise AttributeError(
@@ -45,7 +45,7 @@ class CESObject(object):
         classname = self.__class__.__name__
 
         # Extracting column names from the DataFrame
-        attrs = ", ".join(self.dataframe.columns)
+        attrs = ", ".join(self.df.columns)
 
         return "{}({})".format(classname, attrs)
 
@@ -61,9 +61,9 @@ class CESObject(object):
         # Check if 'resultList' key exists in attributes
         if 'resultList' in attributes:
             # Use the resultList for the dataframe
-            self.dataframe = pd.DataFrame(attributes['resultList'])
+            self.df = pd.DataFrame(attributes['resultList'])
         else:
-            self.dataframe = pd.DataFrame([attributes])
+            self.df = pd.DataFrame([attributes])
 
         # Convert specific columns to datetime format
         date_columns = [
@@ -85,8 +85,8 @@ class CESObject(object):
             "submitDate"
             ]
         for col in date_columns:
-            if col in self.dataframe.columns:
-                self.dataframe[col] = pd.to_datetime(self.dataframe[col])
+            if col in self.df.columns:
+                self.df[col] = pd.to_datetime(self.df[col])
 
     def get_context(self, return_type):
         """

@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from pprint import pformat
+import time
 
 import requests
 from pces.errors import (
@@ -30,6 +31,19 @@ class Requester(object):
         self.access_token = access_token
         self._session = requests.Session()
         self._cache = []
+
+        self.max_retries = 5
+        self.retry_backoff = 2
+        self.rate_limit_delay = 5
+
+    def _handle_rate_limit(self, retries):
+        """
+        Handle rate limit throttling.
+        """
+        # If the API provides "Retry-After" header, use it.
+        # Otherwise, default to RATE_LIMIT_DELAY.
+        retry_after = self.rate_limit_delay * (self.retry_backoff ** retries)
+        time.sleep(retry_after)
 
     def _delete_request(self, url, headers, data=None, **kwargs):
         """
@@ -189,7 +203,19 @@ class Requester(object):
         if _kwargs:
             logger.debug("Data: {data}".format(data=pformat(_kwargs)))
 
-        response = req_method(full_url, headers, _kwargs, json=json)
+        retries = 0
+        while retries < self.max_retries:
+            response = req_method(full_url, headers, _kwargs, json=json)
+
+            # If rate limited (often 429, but verify with your API)
+            if response.status_code == 429:
+                self._handle_rate_limit(retries)
+                retries += 1
+                continue
+
+            # If not rate limited, break out of the loop
+            break
+
         logger.info(
             "Response: {method} {url} {status}".format(
                 method=method, url=full_url, status=response.status_code

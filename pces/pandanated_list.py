@@ -6,10 +6,19 @@ class PandanatedList(object):
     """
     Abstracts both pagination of the CES API and the Pandas DataFrame object.
     """
+
+    @property
+    def df(self):
+        self._grow_until_complete()
+        return self._df
+
     def __str__(self):
-        return str(self.dataframe)
+        return str(self.df)
 
     def __getattr__(self, name):
+        # ensure all the data is available
+        self._grow_until_complete()
+
         if name in self.__dict__:
             return self.__dict__[name]
 
@@ -19,7 +28,7 @@ class PandanatedList(object):
                 # Extract the return_type argument
                 return_type = kwargs.pop('return_type', None)
 
-                for _, row in self.dataframe.iterrows():
+                for _, row in self.df.iterrows():
                     # Pass the current PaginatedList as the context
                     obj = self._content_class(self._requester, row.to_dict(), context=self._context)
                     result = getattr(obj, name)(*args, **kwargs)
@@ -31,26 +40,13 @@ class PandanatedList(object):
                         continue
 
                     if isinstance(result, PandanatedList):
-                        results.append(result.dataframe)
+                        results.append(result.df)
                     elif isinstance(result, object):
                         results.append(result.dataframe)
 
                 return pd.concat(results, ignore_index=True)
             return method
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
-
-    def __getitem__(self, item):
-        # If item is an integer or slice, return rows from the DataFrame
-        if isinstance(item, (int, slice)):
-            return self.dataframe.iloc[item]
-        # If item is a string, return the column with that name
-        elif isinstance(item, str):
-            if item in self.dataframe.columns:
-                return self.dataframe[item]
-            else:
-                raise KeyError(f"Column '{item}' not found in the DataFrame.")
-        else:
-            raise TypeError("Invalid index type for PaginatedList")
 
     def __init__(
         self,
@@ -63,7 +59,7 @@ class PandanatedList(object):
         context=None,
         **kwargs
     ):
-        self.dataframe = pd.DataFrame()
+        self._df = pd.DataFrame()
         self._filters = filters or {}
         self._context = context
 
@@ -76,16 +72,17 @@ class PandanatedList(object):
         self._next_params = self._first_params
         self._extra_attribs = extra_attribs or {}
         self._request_method = request_method
+        self._fetched_complete = False
 
         # Make the initial API call to populate the DataFrame with the first page of data
         self._grow()
 
     def __iter__(self):
-        for _, row in self.dataframe.iterrows():
+        for _, row in self.df.iterrows():
             yield row
 
     def __repr__(self):
-        return "<PaginatedList of type {}>".format(self._content_class.__name__)
+        return "<PandanatedList of type {}>".format(self._content_class.__name__)
 
     def _get_next_page(self):
         response = self._requester.request(
@@ -126,10 +123,16 @@ class PandanatedList(object):
         if self._filters:
             new_elements = self.apply_filters(new_elements, self._filters)
         new_df = pd.DataFrame(new_elements)
-        self.dataframe = pd.concat([self.dataframe, new_df], ignore_index=True)
+        self.df = pd.concat([self.df, new_df], ignore_index=True)
 
     def _has_next(self):
         return self._next_url is not None
+
+    def _grow_until_complete(self):
+        if not self._fetched_complete:
+            while self._has_next():
+                self._grow()
+            self._fetched_complete = True
 
     def apply_filters(self, df, filters):
         operators_pattern = re.compile(r'^([><≥≤!=≠<>]+)')
