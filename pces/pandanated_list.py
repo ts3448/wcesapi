@@ -51,12 +51,6 @@ class PandanatedList(object):
 
                     if result_is_pandanated:
                         # if there is a return_type
-                        if self._join:
-                            context_df = obj.get_context(return_type, join=True)
-                            if context_df is not None:
-                                results.append(context_df)
-                                content_class = type(context_df)
-                            continue
                         if return_type:
                             context_result = obj.get_context(return_type)
                             if context_result:
@@ -68,12 +62,6 @@ class PandanatedList(object):
                         content_class = result._content_class
 
                     elif result_is_content_class:
-                        if self._join:
-                            context_df = obj.get_context(return_type, join=True)
-                            if context_df is not None:
-                                results.append(context_df)
-                                content_class = type(context_df)
-                            continue
                         if return_type:
                             context_result = obj.get_context(return_type)
                             if context_result:
