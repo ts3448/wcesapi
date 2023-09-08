@@ -21,7 +21,7 @@ class PandanatedList(object):
 
         if hasattr(self._content_class, name) and callable(getattr(self._content_class, name)):
             def method(*args, **kwargs):
-                
+
                 content_class = None
                 result_is_pandanated = False
                 result_is_content_class = False
@@ -31,7 +31,7 @@ class PandanatedList(object):
                 for index, row in self._df.iterrows():
                     # Pass the current PaginatedList as the context
                     obj = self._content_class(self._requester, row.to_dict(), context=self._context)
-                    
+
                     # this is the result of the method call made on the
                     # _content_class using the provided method and arguments.
                     result = getattr(obj, name)(*args, **kwargs)
@@ -245,3 +245,50 @@ class PandanatedList(object):
             filtered_df = filtered_df[neg_mask].reset_index(drop=True)
 
         return filtered_df.reset_index(drop=True)
+
+
+    def prefix_columns(self, df):
+        """
+        Returns a DataFrame with prefixed columns, based on the lowercase name of the class.
+        """
+        prefix = f"{type(self).__name__.lower()}_"
+        new_df = df.copy()
+        new_df.columns = [prefix + col for col in new_df.columns]
+        return new_df
+
+
+    def join_contexts(self, column_mappings={}, method="inner"):
+        """
+        Joins the DataFrame with the DataFrame in its context based on the provided column mappings.
+        Returns a new DataFrame.
+        """
+
+        # Prefix the current dataframe's columns
+        prefixed_df = self.prefix_columns(self._df)
+
+        # Start with the current dataframe copy
+        result_df = prefixed_df
+
+        # Check if the object has a context and that context has a dataframe
+        if hasattr(self, "_context") and self._context and hasattr(self._context, "df"):
+
+            # Get the appropriate column mapping for this object
+            columns_for_join = column_mappings.get(type(self).__name__, {})
+
+            # Extract the columns to join on for current and context dataframes
+            # and prefix them with their respective class names
+            self_columns = [f"{type(self).__name__.lower()}_{col}" for col in columns_for_join.keys()]
+            context_columns = [f"{type(self._context).__name__.lower()}_{col}" for col in columns_for_join.values()]
+
+            # Prefix the context dataframe's columns without altering the original
+            context_prefixed_df = self._context.prefix_columns(self._context._df)
+
+            # Join with the context's dataframe using the specified columns
+            if self_columns and context_columns:
+                result_df = result_df.merge(context_prefixed_df, left_on=self_columns, right_on=context_columns, how=method)
+
+            # Recursive call: Join with the resulting dataframe from the context's join_contexts method
+            context_join_df = self._context.join_contexts(column_mappings=column_mappings, method=method)
+            result_df = result_df.merge(context_join_df, left_on=self_columns, right_on=context_columns, how=method)
+
+        return result_df
