@@ -31,6 +31,7 @@ class Course(CESObject):
             "GET",
             "courses/{}/projects".format(self.id),
             filters=filters,
+            extra_attribs={"courseID": self.id},
             _kwargs=combine_kwargs(**kwargs)
             )
 

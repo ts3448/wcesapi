@@ -110,7 +110,7 @@ class PandanatedList(object):
         self._content_class = content_class
         self._first_url = first_url
         self._first_params = kwargs or {}
-        self._first_params["page"] = kwargs.get("page", 1)
+        self._first_params["page"] = kwargs.get("page", 100)
         self._next_url = first_url
         self._next_params = self._first_params
         self._extra_attribs = extra_attribs or {}
@@ -246,7 +246,6 @@ class PandanatedList(object):
 
         return filtered_df.reset_index(drop=True)
 
-
     def prefix_columns(self, df):
         """
         Returns a DataFrame with prefixed columns, based on the lowercase name of the class.
@@ -255,7 +254,6 @@ class PandanatedList(object):
         new_df = df.copy()
         new_df.columns = [prefix + col for col in new_df.columns]
         return new_df
-
 
     def join_contexts(self, column_mappings={}, method="inner"):
         """

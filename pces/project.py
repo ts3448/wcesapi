@@ -187,8 +187,9 @@ class Project(CESObject):
             _kwargs=combine_kwargs(**kwargs)
             )
 
-    # format is "Project Attribute"
+    # format is "Other Class": {"column from other class" : "column from current class"}
     _shared_columns = {
+        "Course" : {"courseId" :  "id"},
         "OverallResponseRate": {"id": "projectId"},
         "ProjectSurvey": {"id": "projectId"},
         "RawDataGeneral": {"id": "projectId"},
