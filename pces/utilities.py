@@ -1,5 +1,3 @@
-
-
 def clean_url(base_url):
     """
     Clean up a given base URL.
@@ -10,6 +8,7 @@ def clean_url(base_url):
     """
     base_url = base_url.strip()
     return base_url.rstrip("/")
+
 
 def is_multivalued(value):
     """

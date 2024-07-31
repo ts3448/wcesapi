@@ -1,13 +1,13 @@
-from pces.ces_object import CESObject
-from pces.pandanated_list import PandanatedList
-from pces.nonrespondent import NonRespondent
-from pces.overall_response_rate import OverallResponseRate
-from pces.project_survey import ProjectSurvey
-from pces.project_course import ProjectCourse
-from pces.respondent import Respondent
-from pces.response_rate import ResponseRate
-from pces.raw_data_general import RawDataGeneral
-from pces.utilities import combine_kwargs
+from ces_object import CESObject
+from pandanated_list import PandanatedList
+from nonrespondent import NonRespondent
+from overall_response_rate import OverallResponseRate
+from project_survey import ProjectSurvey
+from project_course import ProjectCourse
+from respondent import Respondent
+from response_rate import ResponseRate
+from raw_data_general import RawDataGeneral
+from utilities import combine_kwargs
 
 
 class Project(CESObject):
@@ -26,9 +26,7 @@ class Project(CESObject):
 
         Returns a PandanatedList of ProjectSurveys
         """
-        extra_attribs = {
-            "projectId": self.id
-            }
+        extra_attribs = {"projectId": self.id}
 
         return PandanatedList(
             ProjectSurvey,
@@ -38,8 +36,8 @@ class Project(CESObject):
             filters=filters,
             context=self,
             extra_attribs=extra_attribs,
-            _kwargs=combine_kwargs(**kwargs)
-            )
+            _kwargs=combine_kwargs(**kwargs),
+        )
 
     def get_project_courses(self, filters=None, **kwargs):
         """
@@ -49,9 +47,7 @@ class Project(CESObject):
 
         Returns a PandanatedList of ProjectCourse
         """
-        extra_attribs = {
-            "projectId": self.id
-            }
+        extra_attribs = {"projectId": self.id}
 
         return PandanatedList(
             ProjectCourse,
@@ -61,8 +57,8 @@ class Project(CESObject):
             filters=filters,
             context=self,
             extra_attribs=extra_attribs,
-            _kwargs=combine_kwargs(**kwargs)
-            )
+            _kwargs=combine_kwargs(**kwargs),
+        )
 
     def get_project_course(self, id, **kwargs):
         """
@@ -72,9 +68,7 @@ class Project(CESObject):
 
         Returns a ProjectCourse
         """
-        extra_attribs = {
-            "projectId": self.id
-            }
+        extra_attribs = {"projectId": self.id}
 
         return PandanatedList(
             ProjectCourse,
@@ -83,8 +77,8 @@ class Project(CESObject):
             "projects/{}/courses/{}".format(self.id, id),
             context=self,
             extra_attribs=extra_attribs,
-            _kwargs=combine_kwargs(**kwargs)
-            )
+            _kwargs=combine_kwargs(**kwargs),
+        )
 
     def get_respondents(self, filters=None, **kwargs):
         """
@@ -102,8 +96,8 @@ class Project(CESObject):
             "projects/{}/respondents".format(self.id),
             context=self,
             filters=filters,
-            _kwargs=combine_kwargs(**kwargs)
-            )
+            _kwargs=combine_kwargs(**kwargs),
+        )
 
     def get_non_respondents(self, filters=None, **kwargs):
         """
@@ -121,8 +115,8 @@ class Project(CESObject):
             "projects/{}/nonRespondents".format(self.id),
             filters=filters,
             context=self,
-            _kwargs=combine_kwargs(**kwargs)
-            )
+            _kwargs=combine_kwargs(**kwargs),
+        )
 
     def get_response_rate(self, filters=None, return_type=None, **kwargs):
         """
@@ -143,8 +137,8 @@ class Project(CESObject):
             "projects/{}/responseRate".format(self.id),
             filters=filters,
             context=self,
-            _kwargs=combine_kwargs(**kwargs)
-            )
+            _kwargs=combine_kwargs(**kwargs),
+        )
 
     def get_overall_response_rate(self, filters=None, return_type=None, join=False):
         """
@@ -165,8 +159,8 @@ class Project(CESObject):
             filters=filters,
             context=self,
             return_type=return_type,
-            join=join
-            )
+            join=join,
+        )
 
     def get_raw_data(self, filters=None, **kwargs):
         """
@@ -184,17 +178,17 @@ class Project(CESObject):
             "projects/{}/general/rawData".format(self.id),
             filters=filters,
             context=self,
-            _kwargs=combine_kwargs(**kwargs)
-            )
+            _kwargs=combine_kwargs(**kwargs),
+        )
 
     # format is "Other Class": {"column from other class" : "column from current class"}
     _shared_columns = {
-        "Course" : {"courseId" :  "id"},
+        "Course": {"courseId": "id"},
         "OverallResponseRate": {"id": "projectId"},
         "ProjectSurvey": {"id": "projectId"},
         "RawDataGeneral": {"id": "projectId"},
         "ResponseRate": {"id": "projectId"},
         "NonRespondent": {"id": "projectId"},
         "Respondent": {"id": "projectId"},
-        "ProjectCourse": {"id": "projectId"}
-        }
+        "ProjectCourse": {"id": "projectId"},
+    }

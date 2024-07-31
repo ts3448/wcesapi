@@ -1,8 +1,7 @@
-from pces.ces_object import CESObject
-from pces.pandanated_list import PandanatedList
-from pces.project import Project
-from pces.utilities import combine_kwargs
-from pces.metadata import Metadata
+from ces_object import CESObject
+from project import Project
+from utilities import combine_kwargs
+from metadata import Metadata
 
 
 class Course(CESObject):
@@ -25,15 +24,7 @@ class Course(CESObject):
         Returns a PandanatedList of Projects
         """
 
-        return PandanatedList(
-            Project,
-            self.__requester,
-            "GET",
-            "courses/{}/projects".format(self.id),
-            filters=filters,
-            extra_attribs={"courseID": self.id},
-            _kwargs=combine_kwargs(**kwargs)
-            )
+        return Project(self.__requester, "GET", "courses/{}/projects".format(self.id))
 
     def get_metadata(self):
         """
@@ -44,7 +35,6 @@ class Course(CESObject):
         Returns a Metadata
         """
         response = self.__requester.request(
-            "GET",
-            "courses/{}/metadata".format(self.id)
-            )
+            "GET", "courses/{}/metadata".format(self.id)
+        )
         return Metadata(self.__requester, response.json())

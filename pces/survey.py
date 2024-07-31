@@ -1,8 +1,8 @@
-from pces.ces_object import CESObject
-from pces.pandanated_list import PandanatedList
-from pces.question import Question
-from pces.response_rate import ResponseRate
-from pces.utilities import combine_kwargs
+from ces_object import CESObject
+from pandanated_list import PandanatedList
+from question import Question
+from response_rate import ResponseRate
+from utilities import combine_kwargs
 
 
 class Survey(CESObject):

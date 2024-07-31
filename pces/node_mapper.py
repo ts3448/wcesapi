@@ -1,4 +1,4 @@
-from pces.ces_object import CESObject
+from ces_object import CESObject
 
 
 class NodeMapper(CESObject):

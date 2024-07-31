@@ -1,7 +1,7 @@
-from pces.ces_object import CESObject
-from pces.user import User
-from pces.pandanated_list import PandanatedList
-from pces.utilities import combine_kwargs
+from ces_object import CESObject
+from user import User
+from pandanated_list import PandanatedList
+from utilities import combine_kwargs
 
 
 class ProjectCourse(CESObject):

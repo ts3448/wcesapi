@@ -1,257 +1,189 @@
 import logging
 from datetime import datetime
-from pprint import pformat
+from urllib.parse import urljoin
+import requests
+import json
 import time
 
-import requests
-from pces.errors import (
-    UnauthorizedAccess,
-    ResourceDoesNotExist,
-    UnprocessableEntity,
-    GeneralError)
+from typing import Annotated, TypeAlias, Any, Dict, Optional, Literal
+
+# Type aliases
+HttpMethod: TypeAlias = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
+ApiEndpoint: TypeAlias = Annotated[str, "The API endpoint to call"]
+QueryParams: TypeAlias = Annotated[
+    Dict[str, Any], "Optional query parameters for GET requests"
+]
+RequestData: TypeAlias = Annotated[
+    Dict[str, Any], "Optional data for POST, PUT requests"
+]
+ResponseData: TypeAlias = Annotated[Dict[str, Any], "The JSON-decoded response data"]
+MaxRetries: TypeAlias = Annotated[
+    int | None, "Maximum number of retry attempts for failed requests"
+]
+RetryBackoff: TypeAlias = Annotated[
+    int | None, "Exponential backoff factor for retries (in seconds)"
+]
+RateLimitDelay: TypeAlias = Annotated[
+    int | None, "Initial delay for rate limiting (in seconds)"
+]
+
 
 logger = logging.getLogger(__name__)
 
 
-class Requester(object):
+class RequesterError(Exception):
+    """Base class for Requester exceptions."""
+
+    pass
+
+
+class UnauthorizedAccess(RequesterError):
+    """Raised when the access token is invalid."""
+
+    pass
+
+
+class ResourceDoesNotExist(RequesterError):
+    """Raised when the requested resource is not found."""
+
+    pass
+
+
+class UnprocessableEntity(RequesterError):
+    """Raised when the request parameters are invalid."""
+
+    pass
+
+
+class Requester:
     """
-    Responsible for handling HTTP requests.
+    Responsible for handling HTTP requests to the Course Evaluations & Surveys API.
     """
 
-    def __init__(self, base_url, access_token):
-        """
-        :param base_url: The base URL of the CES instance's API.
-        :type base_url: str
-        :param access_token: The API key to authenticate requests with.
-        :type access_token: str
-        """
-        # Preserve the original base url and add "/api/v1" to it
-        self.original_url = base_url
-        self.base_url = base_url + "/api/"
-        self.access_token = access_token
+    def __init__(
+        self,
+        base_url: str,
+        access_token: str,
+        max_retries: MaxRetries,
+        retry_backoff: RetryBackoff,
+        rate_limit_delay: RateLimitDelay,
+    ):
+        self.base_url: str = base_url
+        self.access_token: str = access_token
+        self.max_retries: MaxRetries = max_retries
+        self.retry_backoff: RetryBackoff = retry_backoff
+        self.rate_limit_delay: RateLimitDelay = rate_limit_delay
         self._session = requests.Session()
-        self._cache = []
+        self._session.headers.update({"AuthToken": self.access_token})
 
-        self.max_retries = 5
-        self.retry_backoff = 2
-        self.rate_limit_delay = 5
+    def set_retry_options(self, max_retries: MaxRetries, retry_backoff: RetryBackoff):
+        self.max_retries = max_retries
+        self.retry_backoff = retry_backoff
 
-    def _handle_rate_limit(self, retries):
-        """
-        Handle rate limit throttling.
-        """
-        # If the API provides "Retry-After" header, use it.
-        # Otherwise, default to RATE_LIMIT_DELAY.
-        retry_after = self.rate_limit_delay * (self.retry_backoff ** retries)
-        time.sleep(retry_after)
-
-    def _delete_request(self, url, headers, data=None, **kwargs):
-        """
-        Issue a DELETE request to the specified endpoint with the data provided.
-
-        :param url: The URL to request.
-        :type url: str
-        :param headers: The HTTP headers to send with this request.
-        :type headers: dict
-        :param data: The data to send with this request.
-        :type data: dict
-        """
-        return self._session.delete(url, headers=headers, data=data)
-
-    def _get_request(self, url, headers, params=None, **kwargs):
-        """
-        Issue a GET request to the specified endpoint with the data provided.
-
-        :param url: The URL to request.
-        :type url: str
-        :param headers: The HTTP headers to send with this request.
-        :type headers: dict
-        :param params: The parameters to send with this request.
-        :type params: dict
-        """
-        return self._session.get(url, headers=headers, params=params)
-
-    def _patch_request(self, url, headers, data=None, **kwargs):
-        """
-        Issue a PATCH request to the specified endpoint with the data provided.
-
-        :param url: The URL to request.
-        :type url: str
-        :param headers: The HTTP headers to send with this request.
-        :type headers: dict
-        :param data: The data to send with this request.
-        :type data: dict
-        """
-        return self._session.patch(url, headers=headers, data=data)
-
-    def _post_request(self, url, headers, data=None, json=False):
-        """
-        Issue a POST request to the specified endpoint with the data provided.
-
-        :param url: The URL to request.
-        :type url: str
-        :param headers: The HTTP headers to send with this request.
-        :type headers: dict
-        :param data: The data to send with this request.
-        :type data: dict
-        :param json: Whether or not to send the data as json
-        :type json: bool
-        """
-        if json:
-            return self._session.post(url, headers=headers, json=dict(data))
-
-        # Grab file from data.
-        files = None
-        for field, value in data:
-            if field == "file":
-                if isinstance(value, dict) or value is None:
-                    files = value
-                else:
-                    files = {"file": value}
-                break
-
-        # Remove file entry from data.
-        data[:] = [tup for tup in data if tup[0] != "file"]
-
-        return self._session.post(url, headers=headers, data=data, files=files)
-
-    def _put_request(self, url, headers, data=None, **kwargs):
-        """
-        Issue a PUT request to the specified endpoint with the data provided.
-
-        :param url: The URL to request.
-        :type url: str
-        :param headers: The HTTP headers to send with this request.
-        :type headers: dict
-        :param data: The data to send with this request.
-        :type data: dict
-        """
-        return self._session.put(url, headers=headers, data=data)
+    def set_rate_limit_delay(self, rate_limit_delay: RateLimitDelay):
+        self.rate_limit_delay = rate_limit_delay
 
     def request(
         self,
-        method,
-        endpoint=None,
-        headers=None,
-        use_auth=True,
-        _url=None,
-        _kwargs=None,
-        json=False,
-        **kwargs
-    ):
+        method: HttpMethod,
+        endpoint: ApiEndpoint,
+        params: QueryParams | None = None,
+        data: RequestData | None = None,
+    ) -> ResponseData:
         """
-        Make a request to the CES API and return the response.
+        Make a request to the Course Evaluations & Surveys API
+        and return the response.
 
-        :param method: The HTTP method for the request.
-        :type method: str
-        :param endpoint: The endpoint to call.
-        :type endpoint: str
-        :param headers: Optional HTTP headers to be sent with the request.
-        :type headers: dict
-        :param use_auth: Optional flag to remove the authentication
-            header from the request.
-        :type use_auth: bool
-        :param _kwargs: A list of 2-tuples representing processed
-            keyword arguments to be sent to Canvas as params or data.
-        :type _kwargs: `list`
-        :param json: Whether or not to treat the data as json instead of form data.
-            currently only the POST request of GraphQL is using this parameter.
-            For all other methods it's just passed and ignored.
-        :type json: `bool`
-        :rtype: :class:`requests.Response`
+        Raises:
+            UnauthorizedAccess: If the access token is invalid.
+            ResourceDoesNotExist: If the requested resource is not found.
+            UnprocessableEntity: If the request parameters are invalid.
+            RequesterError: For other HTTP errors.
         """
-        full_url = _url if _url else "{}{}".format(self.base_url, endpoint)
+        url = urljoin(self.base_url, endpoint)
+        request_kwargs = self._prepare_request_kwargs(params, data)
 
-        if not headers:
-            headers = {}
-
-        if use_auth:
-            auth_header = {"AuthToken": "{}".format(self.access_token)}
-            headers.update(auth_header)
-
-        # Convert kwargs into list of 2-tuples and combine with _kwargs.
-        _kwargs = _kwargs or []
-        _kwargs.extend(kwargs.items())
-
-        # Do any final argument processing before sending to request method.
-        for i, kwarg in enumerate(_kwargs):
-            kw, arg = kwarg
-
-            # Convert boolean objects to a lowercase string.
-            if isinstance(arg, bool):
-                _kwargs[i] = (kw, str(arg).lower())
-
-            # Convert any datetime objects into ISO 8601 formatted strings.
-            elif isinstance(arg, datetime):
-                _kwargs[i] = (kw, arg.isoformat())
-
-        # Determine the appropriate request method.
-        if method == "GET":
-            req_method = self._get_request
-        elif method == "POST":
-            req_method = self._post_request
-        elif method == "DELETE":
-            req_method = self._delete_request
-        elif method == "PUT":
-            req_method = self._put_request
-        elif method == "PATCH":
-            req_method = self._patch_request
-
-        # Call the request method
-        logger.info("Request: {method} {url}".format(method=method, url=full_url))
-
-        if _kwargs:
-            logger.debug("Data: {data}".format(data=pformat(_kwargs)))
-
-        retries = 0
-        while retries < self.max_retries:
-            response = req_method(full_url, headers, _kwargs, json=json)
-
-            # If rate limited (often 429, but verify with your API)
-            if response.status_code == 429:
-                self._handle_rate_limit(retries)
-                retries += 1
-                continue
-
-            # If not rate limited, break out of the loop
-            break
-
-        logger.info(
-            "Response: {method} {url} {status}".format(
-                method=method, url=full_url, status=response.status_code
-            )
-        )
-        logger.debug(
-            "Headers: {headers}"
-        )
+        logger.info(f"Request: {method} {url}")
+        logger.debug(f"Request data: {request_kwargs}")
 
         try:
-            logger.debug(
-                "Data: {data}".format(data=pformat(response.content.decode("utf-8")))
+            response = self._send_request(method, url, request_kwargs)
+            self._log_response(response)
+            self._handle_errors(response)
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"Request failed: {str(e)}")
+            raise RequesterError(f"Request failed: {str(e)}")
+
+    def _prepare_request_kwargs(
+        self,
+        params: Optional[Dict[str, Any]],
+        data: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Prepares the keyword arguments for the request."""
+        request_kwargs = {}
+
+        if params:
+            request_kwargs["params"] = {
+                k: self._format_value(v) for k, v in params.items()
+            }
+
+        if data:
+            request_kwargs["data"] = {k: self._format_value(v) for k, v in data.items()}
+            self._session.headers.update(
+                {"Content-Type": "application/x-www-form-urlencoded"}
             )
-        except UnicodeDecodeError:
-            logger.debug("Data: {data}".format(data=pformat(response.content)))
-        except AttributeError:
-            # response.content is None
-            logger.debug("No data")
 
-        # Add response to internal cache
-        if len(self._cache) > 4:
-            self._cache.pop()
+        return request_kwargs
 
-            self._cache.insert(0, response)
+    @staticmethod
+    def _format_value(value: Any) -> str:
+        """Format value for API request."""
+        if isinstance(value, bool):
+            return str(value).lower()
+        elif isinstance(value, datetime):
+            return value.isoformat() + "Z"  # Ensure UTC format
+        return str(value)
 
-        # Raise for status codes
+    def _send_request(
+        self, method: str, url: str, kwargs: Dict[str, Any]
+    ) -> requests.Response:
+        """Sends the HTTP request with retry logic."""
+        for attempt in range(self.max_retries):
+            response = self._session.request(method, url, **kwargs)
+            if response.status_code != 429:  # Not rate limited
+                return response
+            self._handle_rate_limit(attempt)
+        return response  # Return last response if all retries failed
+
+    def _handle_rate_limit(self, attempt: int) -> None:
+        """Handles rate limiting by implementing exponential backoff."""
+        retry_after = self.rate_limit_delay * (self.retry_backoff**attempt)
+        logger.warning(f"Rate limited. Retrying after {retry_after} seconds.")
+        time.sleep(retry_after)
+
+    def _log_response(self, response: requests.Response) -> None:
+        """Logs the response details."""
+        logger.info(
+            f"Response: {response.request.method} {response.url} {response.status_code}"
+        )
+        logger.debug(f"Response headers: {response.headers}")
+        try:
+            logger.debug(f"Response data: {response.json()}")
+        except json.JSONDecodeError:
+            logger.debug(f"Response data: {response.text}")
+
+    def _handle_errors(self, response: requests.Response) -> None:
+        """Handles errors in the response by raising appropriate exceptions."""
         if response.status_code == 401:
-            raise UnauthorizedAccess("The token is not valid.")
+            raise UnauthorizedAccess("The access token is invalid.")
         elif response.status_code == 404:
-            raise ResourceDoesNotExist("The requested resource is not found.")
+            raise ResourceDoesNotExist("The requested resource was not found.")
         elif response.status_code == 422:
-            raise UnprocessableEntity("The request parameters are not valid.")
-        elif response.status_code > 400:
-            # generic catch-all for error codes
-            raise GeneralError(
-                "Encountered an error: status code {}".format(response.status_code)
-            )
+            raise UnprocessableEntity("The request parameters are invalid.")
+        elif response.status_code >= 400:
+            raise RequesterError(f"HTTP error {response.status_code}: {response.text}")
 
-        return response
+    def __del__(self):
+        """Ensures the session is closed when the Requester object is destroyed."""
+        self._session.close()

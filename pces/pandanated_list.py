@@ -30,7 +30,13 @@ class PandanatedList(object):
 
                 for index, row in self._df.iterrows():
                     # Pass the current PaginatedList as the context
-                    obj = self._content_class(self._requester, row.to_dict(), context=self._context)
+                    obj = self._content_class(
+                        requester=self._requester,
+                        attributes=row.to_dict(),
+                        content_class=self._content_class,  # This should be the class type you're working with
+                        request_method=self._request_method,  # Example, adjust based on actual needs
+                        first_url=self._first_url,  # Example, adjust based on actual endpoint
+                        context=self._context)
 
                     # this is the result of the method call made on the
                     # _content_class using the provided method and arguments.
@@ -110,7 +116,7 @@ class PandanatedList(object):
         self._content_class = content_class
         self._first_url = first_url
         self._first_params = kwargs or {}
-        self._first_params["page"] = kwargs.get("page", 100)
+        self._first_params["page"] = kwargs.get("page", 1)
         self._next_url = first_url
         self._next_params = self._first_params
         self._extra_attribs = extra_attribs or {}
@@ -143,6 +149,7 @@ class PandanatedList(object):
         pageSize = data.get("pageSize")
         resultList = data.get("resultList", [])
 
+
         # Determine if there's a next page based on the condition
         if pageSize == len(resultList) and page is not None:
             # Construct the next URL by incrementing the page number
@@ -168,6 +175,7 @@ class PandanatedList(object):
         if self._filters:
             new_elements = self.apply_filters(new_elements, self._filters)
         new_df = pd.DataFrame(new_elements)
+
         self._df = pd.concat([self._df, new_df], ignore_index=True)
 
     def _has_next(self):
