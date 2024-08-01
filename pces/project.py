@@ -1,194 +1,314 @@
+from datetime import datetime
+from typing import Optional
 from ces_object import CESObject
-from pandanated_list import PandanatedList
 from nonrespondent import NonRespondent
-from overall_response_rate import OverallResponseRate
 from project_survey import ProjectSurvey
 from project_course import ProjectCourse
 from respondent import Respondent
-from response_rate import ResponseRate
-from raw_data_general import RawDataGeneral
-from utilities import combine_kwargs
+from response_rate import NodeResponseRate, ResponseRate, OverallResponseRate
+from raw_data import RawDataGeneral
 
 
 class Project(CESObject):
+    """
+    Represents a Project in the CES system.
+    """
+
     def __str__(self):
-        return "{} {} ({})".format(self.course_code, self.name, self.id)
+        return f"{self.title} ({self.id})"
 
-    def get_project_surveys(self, filters=None, **kwargs):
+    def list_project_surveys(self):
         """
-        Gets a list of surveys for the account by project id.
+        Gets a list of surveys for the project.
 
-        API call:
-            GET /api/projects/{projectId}/surveys
-
-         Optional parameters (kwargs):
-            page (int)
-
-        Returns a PandanatedList of ProjectSurveys
+        Returns:
+            ProjectSurvey: A ProjectSurvey object representing the retrieved surveys.
         """
-        extra_attribs = {"projectId": self.id}
+        api_endpoint = f"projects/{self.id}/surveys"
+        return ProjectSurvey(self._requester, "GET", api_endpoint)
 
-        return PandanatedList(
-            ProjectSurvey,
-            self._requester,
-            "GET",
-            "projects/{}/surveys".format(self.id),
-            filters=filters,
-            context=self,
-            extra_attribs=extra_attribs,
-            _kwargs=combine_kwargs(**kwargs),
-        )
-
-    def get_project_courses(self, filters=None, **kwargs):
+    def list_project_courses(self):
         """
-        Gets a list of courses for a project.
+        Gets a list of courses for the project.
 
-        GET /api/projects/{projectId}/courses
-
-        Returns a PandanatedList of ProjectCourse
+        Returns:
+            ProjectCourse: A ProjectCourse object representing the retrieved project courses.
         """
-        extra_attribs = {"projectId": self.id}
+        api_endpoint = f"projects/{self.id}/courses"
+        return ProjectCourse(self._requester, "GET", api_endpoint)
 
-        return PandanatedList(
-            ProjectCourse,
-            self._requester,
-            "GET",
-            "projects/{}/courses".format(self.id),
-            filters=filters,
-            context=self,
-            extra_attribs=extra_attribs,
-            _kwargs=combine_kwargs(**kwargs),
-        )
-
-    def get_project_course(self, id, **kwargs):
+    def get_project_course(self, course_id: int):
         """
         Gets a course in a project for the account.
 
-        GET /api/projects/{projectId}/courses/{id}
+        Args:
+            course_id (int): The ID of the course.
 
-        Returns a ProjectCourse
+        Returns:
+            ProjectCourse: A ProjectCourse object representing the retrieved project course.
         """
-        extra_attribs = {"projectId": self.id}
+        api_endpoint = f"projects/{self.id}/courses/{course_id}"
+        return ProjectCourse(self._requester, "GET", api_endpoint)
 
-        return PandanatedList(
-            ProjectCourse,
-            self._requester,
-            "GET",
-            "projects/{}/courses/{}".format(self.id, id),
-            context=self,
-            extra_attribs=extra_attribs,
-            _kwargs=combine_kwargs(**kwargs),
+    def list_project_courses_by_canvas_course_sis_id(self, canvas_course_sis_id: str):
+        """
+        Gets a list of courses for a project by Canvas Course SIS ID.
+
+        Args:
+            canvas_course_sis_id (str): The Canvas Course SIS ID.
+
+        Returns:
+            ProjectCourse: A ProjectCourse object representing the retrieved project courses.
+        """
+        api_endpoint = f"projects/{self.id}/courses/canvascourse/{canvas_course_sis_id}"
+        return ProjectCourse(self._requester, "GET", api_endpoint)
+
+    def list_project_courses_by_canvas_section_sis_id(self, canvas_section_sis_id: str):
+        """
+        Gets a list of courses for a project by Canvas Section SIS ID.
+
+        Args:
+            canvas_section_sis_id (str): The Canvas Section SIS ID.
+
+        Returns:
+            ProjectCourse: A ProjectCourse object representing the retrieved project courses.
+        """
+        api_endpoint = (
+            f"projects/{self.id}/courses/canvassection/{canvas_section_sis_id}"
         )
+        return ProjectCourse(self._requester, "GET", api_endpoint)
 
-    def get_respondents(self, filters=None, **kwargs):
+    def create_project_course(
+        self,
+        node_id: int,
+        code: str,
+        title: str,
+        unique_id: str,
+        node_path: Optional[str] = None,
+        crosslist_unique_id: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        admin_report_access_start_date: Optional[datetime] = None,
+        admin_report_access_end_date: Optional[datetime] = None,
+        instructor_report_access_start_date: Optional[datetime] = None,
+        instructor_report_access_end_date: Optional[datetime] = None,
+        ta_report_access_start_date: Optional[datetime] = None,
+        ta_report_access_end_date: Optional[datetime] = None,
+        custom_question_start_date: Optional[datetime] = None,
+        custom_question_end_date: Optional[datetime] = None,
+    ):
         """
-        Gets respondents in a project for the account.
+        Creates a new project course in the account.
 
-        GET /api/projects/{projectId}/respondents
+        Args:
+            node_id (int): The node ID.
+            code (str): The course code.
+            title (str): The course title.
+            unique_id (str): The unique ID of the course.
+            node_path (Optional[str], optional): The node path. Defaults to None.
+            crosslist_unique_id (Optional[str], optional): The crosslist unique ID. Defaults to None.
+            start_date (Optional[datetime], optional): The start date. Defaults to None.
+            end_date (Optional[datetime], optional): The end date. Defaults to None.
+            admin_report_access_start_date (Optional[datetime], optional): The admin report access start date. Defaults to None.
+            admin_report_access_end_date (Optional[datetime], optional): The admin report access end date. Defaults to None.
+            instructor_report_access_start_date (Optional[datetime], optional): The instructor report access start date. Defaults to None.
+            instructor_report_access_end_date (Optional[datetime], optional): The instructor report access end date. Defaults to None.
+            ta_report_access_start_date (Optional[datetime], optional): The TA report access start date. Defaults to None.
+            ta_report_access_end_date (Optional[datetime], optional): The TA report access end date. Defaults to None.
+            custom_question_start_date (Optional[datetime], optional): The custom question start date. Defaults to None.
+            custom_question_end_date (Optional[datetime], optional): The custom question end date. Defaults to None.
 
-        Returns a PandanatedList of Respondents
+        Returns:
+            ProjectCourse: A ProjectCourse object representing the newly created project course.
         """
+        api_endpoint = f"projects/{self.id}/courses"
+        data = {
+            "nodeId": node_id,
+            "code": code,
+            "title": title,
+            "uniqueId": unique_id,
+            "nodePath": node_path,
+            "crosslistUniqueId": crosslist_unique_id,
+            "startDate": start_date,
+            "endDate": end_date,
+            "adminReportAccessStartDate": admin_report_access_start_date,
+            "adminReportAccessEndDate": admin_report_access_end_date,
+            "instructorReportAccessStartDate": instructor_report_access_start_date,
+            "instructorReportAccessEndDate": instructor_report_access_end_date,
+            "taReportAccessStartDate": ta_report_access_start_date,
+            "taReportAccessEndDate": ta_report_access_end_date,
+            "customQuestionStartDate": custom_question_start_date,
+            "customQuestionEndDate": custom_question_end_date,
+        }
+        return ProjectCourse(self._requester, "POST", api_endpoint, data=data)
 
-        return PandanatedList(
-            Respondent,
-            self.__requester,
-            "GET",
-            "projects/{}/respondents".format(self.id),
-            context=self,
-            filters=filters,
-            _kwargs=combine_kwargs(**kwargs),
-        )
-
-    def get_non_respondents(self, filters=None, **kwargs):
+    def update_project_course(
+        self,
+        course_id: int,
+        node_id: int,
+        code: str,
+        title: str,
+        unique_id: str,
+        node_path: Optional[str] = None,
+        crosslist_unique_id: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        admin_report_access_start_date: Optional[datetime] = None,
+        admin_report_access_end_date: Optional[datetime] = None,
+        instructor_report_access_start_date: Optional[datetime] = None,
+        instructor_report_access_end_date: Optional[datetime] = None,
+        ta_report_access_start_date: Optional[datetime] = None,
+        ta_report_access_end_date: Optional[datetime] = None,
+        custom_question_start_date: Optional[datetime] = None,
+        custom_question_end_date: Optional[datetime] = None,
+    ):
         """
-        Gets non-respondents in a project for the account.
+        Updates an existing project course in the account.
 
-        GET /api/projects/{projectId}/nonRespondents
+        Args:
+            course_id (int): The ID of the course.
+            node_id (int): The node ID.
+            code (str): The course code.
+            title (str): The course title.
+            unique_id (str): The unique ID of the course.
+            node_path (Optional[str], optional): The node path. Defaults to None.
+            crosslist_unique_id (Optional[str], optional): The crosslist unique ID. Defaults to None.
+            start_date (Optional[datetime], optional): The start date. Defaults to None.
+            end_date (Optional[datetime], optional): The end date. Defaults to None.
+            admin_report_access_start_date (Optional[datetime], optional): The admin report access start date. Defaults to None.
+            admin_report_access_end_date (Optional[datetime], optional): The admin report access end date. Defaults to None.
+            instructor_report_access_start_date (Optional[datetime], optional): The instructor report access start date. Defaults to None.
+            instructor_report_access_end_date (Optional[datetime], optional): The instructor report access end date. Defaults to None.
+            ta_report_access_start_date (Optional[datetime], optional): The TA report access start date. Defaults to None.
+            ta_report_access_end_date (Optional[datetime], optional): The TA report access end date. Defaults to None.
+            custom_question_start_date (Optional[datetime], optional): The custom question start date. Defaults to None.
+            custom_question_end_date (Optional[datetime], optional): The custom question end date. Defaults to None.
 
-        Returns a PandanatedList of NonRespondents
+        Returns:
+            ProjectCourse: A ProjectCourse object representing the updated project course.
         """
+        api_endpoint = f"projects/{self.id}/courses/{course_id}"
+        data = {
+            "nodeId": node_id,
+            "code": code,
+            "title": title,
+            "uniqueId": unique_id,
+            "nodePath": node_path,
+            "crosslistUniqueId": crosslist_unique_id,
+            "startDate": start_date.isoformat() if start_date else None,
+            "endDate": end_date.isoformat() if end_date else None,
+            "adminReportAccessStartDate": (
+                admin_report_access_start_date.isoformat()
+                if admin_report_access_start_date
+                else None
+            ),
+            "adminReportAccessEndDate": (
+                admin_report_access_end_date.isoformat()
+                if admin_report_access_end_date
+                else None
+            ),
+            "instructorReportAccessStartDate": (
+                instructor_report_access_start_date.isoformat()
+                if instructor_report_access_start_date
+                else None
+            ),
+            "instructorReportAccessEndDate": (
+                instructor_report_access_end_date.isoformat()
+                if instructor_report_access_end_date
+                else None
+            ),
+            "taReportAccessStartDate": (
+                ta_report_access_start_date.isoformat()
+                if ta_report_access_start_date
+                else None
+            ),
+            "taReportAccessEndDate": (
+                ta_report_access_end_date.isoformat()
+                if ta_report_access_end_date
+                else None
+            ),
+            "customQuestionStartDate": (
+                custom_question_start_date.isoformat()
+                if custom_question_start_date
+                else None
+            ),
+            "customQuestionEndDate": (
+                custom_question_end_date.isoformat()
+                if custom_question_end_date
+                else None
+            ),
+        }
+        return ProjectCourse(self._requester, "PUT", api_endpoint, data=data)
 
-        return PandanatedList(
-            NonRespondent,
-            self._requester,
-            "GET",
-            "projects/{}/nonRespondents".format(self.id),
-            filters=filters,
-            context=self,
-            _kwargs=combine_kwargs(**kwargs),
-        )
-
-    def get_response_rate(self, filters=None, return_type=None, **kwargs):
+    def remove_project_course(self, course_id: int):
         """
-        Gets response rates for a project for the account.
+        Removes a project course for the account.
 
-        GET /api/projects/{projectId}/responseRate
+        Args:
+            course_id (int): The ID of the course.
 
-        Returns a PandanatedList of ResponseRate
+        Returns:
+            dict: The response from the API after removing the project course.
         """
+        api_endpoint = f"projects/{self.id}/courses/{course_id}"
+        return self._requester.request("DELETE", api_endpoint)
 
-        if return_type:
-            kwargs["return_type"] = return_type
-
-        return PandanatedList(
-            ResponseRate,
-            self._requester,
-            "GET",
-            "projects/{}/responseRate".format(self.id),
-            filters=filters,
-            context=self,
-            _kwargs=combine_kwargs(**kwargs),
-        )
-
-    def get_overall_response_rate(self, filters=None, return_type=None, join=False):
+    def list_respondents(self):
         """
-        Gets response rates for a project for the account.
+        Gets a list of respondents by project.
 
-        GET /api/projects/{projectId}/OverallResponseRate
-
-        Returns a ResponseRate
+        Returns:
+            Respondent: A Respondent object representing the retrieved respondents.
         """
-        if return_type and join:
-            raise SyntaxError("Cannot use both return_type and join arguments")
+        api_endpoint = f"projects/{self.id}/respondents"
+        return Respondent(self._requester, "GET", api_endpoint)
 
-        return PandanatedList(
-            OverallResponseRate,
-            self._requester,
-            "GET",
-            "projects/{}/OverallResponseRate".format(self.id),
-            filters=filters,
-            context=self,
-            return_type=return_type,
-            join=join,
-        )
-
-    def get_raw_data(self, filters=None, **kwargs):
+    def list_non_respondents(self):
         """
-        Gets response rates for a project for the account.
+        Gets a list of non-respondents by project.
 
-        GET /api/projects/{projectId}/general/rawData
-
-        Returns a PandanatedList of RawDataGeneral
+        Returns:
+            NonRespondent: A NonRespondent object representing the retrieved non-respondents.
         """
+        api_endpoint = f"projects/{self.id}/nonRespondents"
+        return NonRespondent(self._requester, "GET", api_endpoint)
 
-        return PandanatedList(
-            RawDataGeneral,
-            self._requester,
-            "GET",
-            "projects/{}/general/rawData".format(self.id),
-            filters=filters,
-            context=self,
-            _kwargs=combine_kwargs(**kwargs),
-        )
+    def get_response_rate(self):
+        """
+        Gets the response rate by project.
 
-    # format is "Other Class": {"column from other class" : "column from current class"}
-    _shared_columns = {
-        "Course": {"courseId": "id"},
-        "OverallResponseRate": {"id": "projectId"},
-        "ProjectSurvey": {"id": "projectId"},
-        "RawDataGeneral": {"id": "projectId"},
-        "ResponseRate": {"id": "projectId"},
-        "NonRespondent": {"id": "projectId"},
-        "Respondent": {"id": "projectId"},
-        "ProjectCourse": {"id": "projectId"},
-    }
+        Returns:
+            ResponseRate: A ResponseRate object representing the retrieved response rate.
+        """
+        api_endpoint = f"projects/{self.id}/responseRate"
+        return ResponseRate(self._requester, "GET", api_endpoint)
+
+    def get_overall_response_rate(self):
+        """
+        Gets the overall project response rate.
+
+        Returns:
+            OverallResponseRate: An Overal ResponseRate object representing the overall project response rate.
+        """
+        api_endpoint = f"projects/{self.id}/OverallResponseRate"
+        return OverallResponseRate(self._requester, "GET", api_endpoint)
+
+    def get_node_response(self):
+        """
+        Gets the node response rate by project.
+
+        Returns:
+            ResponseRate: A ResponseRate object representing the node response rate by project.
+        """
+        api_endpoint = f"projects/{self.id}/NodeResponseRateByProject"
+        return NodeResponseRate(self._requester, "GET", api_endpoint)
+
+    def get_raw_data(self):
+        """
+        Gets the raw data by general project.
+
+        Returns:
+            RawDataGeneral: A RawDataGeneral object representing the raw data by general project.
+        """
+        api_endpoint = f"projects/{self.id}/general/rawData"
+        return RawDataGeneral(self._requester, "GET", api_endpoint)

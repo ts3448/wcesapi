@@ -1,50 +1,37 @@
 from ces_object import CESObject
-from pandanated_list import PandanatedList
 from question import Question
 from response_rate import ResponseRate
-from utilities import combine_kwargs
 
 
 class Survey(CESObject):
-    def __str__(self):
-        return "{} {} ({})".format(self.course_code, self.name, self.id)
 
-    def get_questions(self, filters=None, **kwargs):
+    def get_questions(self):
         """
-        Gets a list of survey questions and options for the account
-        by survey id.
+        Gets a list of survey questions and options for the account by survey id.
 
         API call:
             GET /api/surveys/{surveyId}/Questions
 
-        Accepted paramters (kwargs):
-            page (int)
-
-        Returns a PandanatedList of Questions
+        Returns:
+            Question: A Question containing the list of survey questions and options.
         """
+        api_endpoint = f"surveys/{self.id}/Questions"
+        return Question(
+            requester=self._requester, request_method="GET", api_endpoint=api_endpoint
+        )
 
-        return PandanatedList(
-            Question,
-            self.__requester,
-            "GET",
-            "surveys/{}/Questions".format(self.id),
-            filters=filters,
-            _kwargs=combine_kwargs(**kwargs)
-            )
-
-    def get_response_rate(self, filters=None):
+    def get_response_rate(self):
         """
-        Returns response rate of all projects associated with this survey
+        Returns response rate of all projects associated with this survey.
 
-        GET /api/SurveyResponseRate/{surveyId}
+        API call:
+            GET /api/SurveyResponseRate/{surveyId}
 
-        Returns a PandanatedList of ResponseRates
+        Returns:
+            ResponseRate: A ResponseRate containing the response rates for all projects
+                          associated with this survey.
         """
-
-        return PandanatedList(
-            ResponseRate,
-            self.__requester,
-            "GET",
-            "SurveyResponseRate/{}".format(self.id),
-            filters=filters
-            )
+        api_endpoint = f"SurveyResponseRate/{self.id}"
+        return ResponseRate(
+            requester=self._requester, request_method="GET", api_endpoint=api_endpoint
+        )

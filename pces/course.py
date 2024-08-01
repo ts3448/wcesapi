@@ -1,40 +1,60 @@
 from ces_object import CESObject
 from project import Project
-from utilities import combine_kwargs
 from metadata import Metadata
 
 
 class Course(CESObject):
+    """
+    Represents a Course in the CES system.
+    """
+
     def __str__(self):
-        return "{} {} ({})".format(self.course_code, self.name, self.id)
+        return "{} ({})".format(self.title, self.id)
 
-    def get_projects(self, filters=None, **kwargs):
+    def list_projects(self):
         """
-        Gets a list of projects for a course in the account.
+        Gets a list of projects for the course.
 
-        API call:
-            GET /api/courses/{courseId}/projects
-
-        Params:
-            filters (dict): attributes and value pairs to apply as a filter.
-
-            **kwargs:
-                page (int)
-
-        Returns a PandanatedList of Projects
+        Returns:
+            Project: A Project object representing the retrieved projects.
         """
+        api_endpoint = f"courses/{self.id}/projects"
+        return Project(self._requester, "GET", api_endpoint)
 
-        return Project(self.__requester, "GET", "courses/{}/projects".format(self.id))
-
-    def get_metadata(self):
+    def list_metadata(self):
         """
-        Gets a list of metadata for the account by course id.
+        Gets a list of metadata for the course.
 
-        GET /api/courses/{courseId}/metadata
-
-        Returns a Metadata
+        Returns:
+            Metadata: A Metadata object representing the retrieved metadata.
         """
-        response = self.__requester.request(
-            "GET", "courses/{}/metadata".format(self.id)
-        )
-        return Metadata(self.__requester, response.json())
+        api_endpoint = f"courses/{self.id}/metadata"
+        return Metadata(self._requester, "GET", api_endpoint)
+
+    def save_metadata(self, name: str, value: str):
+        """
+        Creates or updates metadata for the course.
+
+        Args:
+            name (str): The name of the metadata.
+            value (str): The value of the metadata.
+
+        Returns:
+            Metadata: A Metadata object representing the saved metadata.
+        """
+        api_endpoint = f"courses/{self.id}/metadata"
+        data = {"name": name, "value": value}
+        return Metadata(self._requester, "POST", api_endpoint, data=data)
+
+    def remove_metadata(self, name: str):
+        """
+        Removes metadata from the course.
+
+        Args:
+            name (str): The name of the metadata to remove.
+
+        Returns:
+            dict: The response from the API after removing the metadata.
+        """
+        api_endpoint = f"courses/{self.id}/metadata/name/{name}"
+        return self._requester.request("DELETE", api_endpoint)

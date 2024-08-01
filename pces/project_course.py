@@ -1,13 +1,9 @@
 from ces_object import CESObject
 from user import User
-from pandanated_list import PandanatedList
-from utilities import combine_kwargs
 
 
 class ProjectCourse(CESObject):
-    def __str__(self):
-        return "{} {} ({})".format(self.course_code, self.name, self.id)
-
+    pass
     # need to figure out relationship between projectCourse id, projectId, and courseId
     # def get_users(self, filters=None, **kwargs):
     #     """
