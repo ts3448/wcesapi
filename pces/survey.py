@@ -1,6 +1,6 @@
-from ces_object import CESObject
-from question import Question
-from response_rate import ResponseRate
+from pces.ces_object import CESObject
+from pces.question import Question
+from pces.response_rate import ResponseRate
 
 
 class Survey(CESObject):

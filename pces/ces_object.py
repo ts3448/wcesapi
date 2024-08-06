@@ -2,7 +2,7 @@ from typing import Any, Dict, Hashable, Optional
 
 import pandas as pd
 import logging
-from requester import Requester, HttpMethod
+from pces.requester import Requester, HttpMethod
 
 
 logger = logging.getLogger(__name__)

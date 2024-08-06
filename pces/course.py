@@ -1,6 +1,6 @@
-from ces_object import CESObject
-from project import Project
-from metadata import Metadata
+from pces.ces_object import CESObject
+from pces.project import Project
+from pces.metadata import Metadata
 
 
 class Course(CESObject):

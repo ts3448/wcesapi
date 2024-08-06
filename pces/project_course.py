@@ -1,5 +1,5 @@
-from ces_object import CESObject
-from user import User
+from pces.ces_object import CESObject
+from pces.user import User
 
 
 class ProjectCourse(CESObject):

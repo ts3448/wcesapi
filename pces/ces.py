@@ -3,16 +3,16 @@ from typing import Any, Optional
 import warnings
 import logging
 
-from account import Account
-from course import Course
-from node import Node
-from node_mapper import NodeMapper
-from project import Project
-from requester import Requester, HttpMethod
-from survey import Survey
-from term import Term
-from user import User
-from metadata import Metadata
+from pces.account import Account
+from pces.course import Course
+from pces.node import Node
+from pces.node_mapper import NodeMapper
+from pces.project import Project
+from pces.requester import Requester
+from pces.survey import Survey
+from pces.term import Term
+from pces.user import User
+from pces.metadata import Metadata
 
 
 logger = logging.getLogger(__name__)
