@@ -1,30 +1,33 @@
 import re
-from setuptools import setup, find_packages
+from setuptools import setup
+from os import path
 
 # Get version number
 with open("src/courseeval/__init__.py", "r") as fd:
-    version = re.search(
+    match = re.search(
         r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', fd.read(), re.MULTILINE
-    ).group(1)
+    )
+    if match:
+        version = match.group(1)
+    else:
+        raise RuntimeError("Cannot find version information")
 
-if not version:
-    raise RuntimeError("Cannot find version information")
 
-# Read the contents of your README file
-with open("README.md", encoding="utf-8") as f:
+# Get the  package info from the readme
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="courseeval",
+    name="wcesapi",
     version=version,
-    author="Your Name",
-    author_email="your.email@example.com",
-    description="API wrapper for the Course Evaluations and Surveys API",
+    author="Tristan Shippen",
+    author_email="tshippen@barnard.edu",
+    description="API wrapper for Watermark's Course Evaluations and Surveys API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/courseeval",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    url="https://github.com/ts3448/wcesapi",
+    packages=["wcesapi"],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
@@ -40,7 +43,7 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Education",
     ],
-    python_requires='>=3.7',
+    python_requires=">=3.7",
     install_requires=[
         "requests",
         "pandas",
