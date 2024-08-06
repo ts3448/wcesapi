@@ -66,7 +66,8 @@ class Requester:
             retry_backoff (Optional[int]): Exponential backoff factor for retries (in seconds).
             rate_limit_delay (Optional[int]): Initial delay for rate limiting (in seconds).
         """
-        self.base_url: str = base_url
+        self.original_url: str = base_url
+        self.base_url = base_url + "/api/"
         self.access_token: str = access_token
         self.max_retries: int = max_retries if max_retries is not None else 3
         self.retry_backoff: int = retry_backoff if retry_backoff is not None else 2
@@ -133,7 +134,13 @@ class Requester:
             response = self._send_request(method, url, request_kwargs)
             self._log_response(response)
             self._handle_errors(response)
-            return response.json()
+
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse JSON, returning raw text")
+                return {"raw_text": response.text}
+
         except requests.RequestException as e:
             logger.error(f"Request failed: {str(e)}")
             raise RequesterError(f"Request failed: {str(e)}")
@@ -166,7 +173,6 @@ class Requester:
             self._session.headers.update(
                 {"Content-Type": "application/x-www-form-urlencoded"}
             )
-
         return request_kwargs
 
     @staticmethod

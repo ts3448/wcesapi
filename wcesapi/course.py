@@ -1,6 +1,6 @@
-from pces.ces_object import CESObject
-from pces.project import Project
-from pces.metadata import Metadata
+from wcesapi.ces_object import CESObject
+from wcesapi.project import Project
+from wcesapi.metadata import Metadata
 
 
 class Course(CESObject):

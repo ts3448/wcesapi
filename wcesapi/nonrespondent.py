@@ -1,4 +1,4 @@
-from pces.ces_object import CESObject
+from wcesapi.ces_object import CESObject
 
 
 class NonRespondent(CESObject):

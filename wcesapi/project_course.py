@@ -1,5 +1,5 @@
-from pces.ces_object import CESObject
-from pces.user import User
+from wcesapi.ces_object import CESObject
+from wcesapi.user import User
 
 
 class ProjectCourse(CESObject):

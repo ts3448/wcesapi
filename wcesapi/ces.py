@@ -3,16 +3,16 @@ from typing import Any, Optional
 import warnings
 import logging
 
-from pces.account import Account
-from pces.course import Course
-from pces.node import Node
-from pces.node_mapper import NodeMapper
-from pces.project import Project
-from pces.requester import Requester
-from pces.survey import Survey
-from pces.term import Term
-from pces.user import User
-from pces.metadata import Metadata
+from wcesapi.account import Account
+from wcesapi.course import Course
+from wcesapi.node import Node
+from wcesapi.node_mapper import NodeMapper
+from wcesapi.project import Project
+from wcesapi.requester import Requester
+from wcesapi.survey import Survey
+from wcesapi.term import Term
+from wcesapi.user import User
+from wcesapi.metadata import Metadata
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +53,32 @@ class CES:
             rate_limit_delay=rate_limit_delay,
         )
         logger.info(f"CES instance initialized with base URL: {clean_base_url}")
+
+    def __repr__(self) -> str:
+        """
+        Provides a detailed string representation of the CES object.
+
+        Returns:
+            str: A detailed string representation of the CES instance.
+        """
+        classname = self.__class__.__name__
+        attributes = [
+            f"base_url='{self._requester.base_url}'",
+            f"max_retries={self._requester.max_retries}",
+            f"retry_backoff={self._requester.retry_backoff}",
+            f"rate_limit_delay={self._requester.rate_limit_delay}",
+        ]
+        attr_str = ",\n    ".join(attributes)
+        return f"{classname}(\n    {attr_str}\n)"
+
+    def __str__(self) -> str:
+        """
+        Provides a concise string representation of the CES object.
+
+        Returns:
+            str: A concise string representation of the CES instance.
+        """
+        return f"CES(base_url='{self._requester.base_url}')"
 
     @staticmethod
     def _validate_base_url(base_url: str) -> None:
@@ -491,7 +517,7 @@ class CES:
         }
         return User(self._requester, "PUT", api_endpoint, data=data)
 
-    def get_nodes(self) -> Node:
+    def list_nodes(self) -> Node:
         """Gets list of nodes."""
         api_endpoint = "nodes"
         return Node(self._requester, "GET", api_endpoint)

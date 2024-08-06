@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Optional
-from pces.ces_object import CESObject
-from pces.nonrespondent import NonRespondent
-from pces.project_survey import ProjectSurvey
-from pces.project_course import ProjectCourse
-from pces.respondent import Respondent
-from pces.response_rate import NodeResponseRate, ResponseRate, OverallResponseRate
-from pces.raw_data import RawDataGeneral
+from wcesapi.ces_object import CESObject
+from wcesapi.nonrespondent import NonRespondent
+from wcesapi.project_survey import ProjectSurvey
+from wcesapi.project_course import ProjectCourse
+from wcesapi.respondent import Respondent
+from wcesapi.response_rate import NodeResponseRate, ResponseRate, OverallResponseRate
+from wcesapi.raw_data import RawDataGeneral
 
 
 class Project(CESObject):

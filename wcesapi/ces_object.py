@@ -2,7 +2,7 @@ from typing import Any, Dict, Hashable, Optional
 
 import pandas as pd
 import logging
-from pces.requester import Requester, HttpMethod
+from wcesapi.requester import Requester, HttpMethod
 
 
 logger = logging.getLogger(__name__)
@@ -154,15 +154,26 @@ class CESObject:
             )
             data = response
 
-            result_list = data.get("resultList", [])
-            new_df = pd.DataFrame(result_list)
-            self._df = pd.concat([self._df, new_df], ignore_index=True)
+            if isinstance(data, dict) and "resultList" in data:
+                # Handle paginated response
+                result_list = data.get("resultList", [])
+                new_df = pd.DataFrame(result_list)
+                self._df = pd.concat([self._df, new_df], ignore_index=True)
 
-            page = data.get("page")
-            page_size = data.get("pageSize")
-            if page_size == len(result_list) and page is not None:
-                next_url = next_url.replace(f"page={page}", f"page={page + 1}")
+                page = data.get("page")
+                page_size = data.get("pageSize")
+                if page_size == len(result_list) and page is not None:
+                    next_url = next_url.replace(f"page={page}", f"page={page + 1}")
+                else:
+                    next_url = None
+            elif isinstance(data, dict):
+                # Handle single-item response
+                new_df = pd.DataFrame([data])
+                self._df = pd.concat([self._df, new_df], ignore_index=True)
+                next_url = None  # No pagination for single-item responses
             else:
+                # Handle unexpected response type
+                logger.warning(f"Unexpected response type: {type(data)}")
                 next_url = None
 
         self._convert_date_columns()
