@@ -25,7 +25,7 @@ from wcesapi import CES
 # CES API URL
 API_URL = "https://your-ces-instance.evaluationkit.com"
 
-# CES API key
+# CES API token
 API_TOKEN = "your-access-token"
 
 # Initialize a new CES object
@@ -35,10 +35,10 @@ ces_client = CES(API_URL, API_KEY)
 ## API Scope and Access
 
 Many institutions use child instances of a parent CES installation, which impacts the base URL you should use and the data you can access. 
-The you must use the specific subdomain for your institution. For example:
+You should use the specific domain or subdomain associated with your API token. For example:
 
 - Parent instance: `school.evaluationkit.com`
-- Your institution's child instance: `subaccount-school.evaluationkit.com`
+- Your institution's child instance where the API token was generated: `subaccount-school.evaluationkit.com`
 
 Attempting to use the root URL of the parent instance may result in insufficient permissions errors.
 
