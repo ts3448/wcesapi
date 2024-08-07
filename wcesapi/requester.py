@@ -109,6 +109,8 @@ class Requester:
         """
         Makes a request to the Course Evaluations & Surveys API and returns the response.
 
+        This method handles the entire request process, including retries for rate limiting.
+
         Args:
             method (HttpMethod): The HTTP method to use for the request.
             endpoint (str): The API endpoint to call.
@@ -122,7 +124,7 @@ class Requester:
             UnauthorizedAccess: If the access token is invalid.
             ResourceDoesNotExist: If the requested resource is not found.
             UnprocessableEntity: If the request parameters are invalid.
-            RequesterError: For other HTTP errors.
+            RequesterError: For other HTTP errors or if all retries fail.
         """
         url = urljoin(self.base_url, endpoint)
         request_kwargs = self._prepare_request_kwargs(params, data)
@@ -130,20 +132,22 @@ class Requester:
         logger.info(f"Request: {method} {url}")
         logger.debug(f"Request data: {request_kwargs}")
 
-        try:
-            response = self._send_request(method, url, request_kwargs)
-            self._log_response(response)
-            self._handle_errors(response)
-
+        for attempt in range(self.max_retries):
             try:
-                return response.json()
-            except json.JSONDecodeError:
-                logger.warning("Failed to parse JSON, returning raw text")
-                return {"raw_text": response.text}
+                response = self._session.request(method, url, **request_kwargs)
+                self._log_response(response)
 
-        except requests.RequestException as e:
-            logger.error(f"Request failed: {str(e)}")
-            raise RequesterError(f"Request failed: {str(e)}")
+                if response.status_code != 429:  # Not rate limited
+                    self._handle_errors(response)
+                    return self._parse_response(response)
+
+                self._handle_rate_limit(attempt)
+            except requests.RequestException as e:
+                logger.error(f"Request failed on attempt {attempt + 1}: {str(e)}")
+                if attempt == self.max_retries - 1:
+                    raise RequesterError(f"Request failed after all retries: {str(e)}")
+
+        raise RequesterError("Request failed after all retries")
 
     def _prepare_request_kwargs(
         self,
@@ -205,38 +209,51 @@ class Requester:
             return value.isoformat()  # Ensure UTC format
         return str(value)
 
-    def _send_request(
-        self, method: str, url: str, kwargs: Dict[str, Any]
-    ) -> requests.Response:
+    def _parse_response(self, response: requests.Response) -> Dict[str, Any]:
         """
-        Sends the HTTP request with retry logic.
+        Parses the response and returns the JSON-decoded data.
 
         Args:
-            method (str): The HTTP method to use for the request.
-            url (str): The URL to send the request to.
-            kwargs (Dict[str, Any]): The keyword arguments for the request.
+            response (requests.Response): The HTTP response to parse.
 
         Returns:
-            requests.Response: The HTTP response.
+            Dict[str, Any]: The JSON-decoded response data.
         """
-        response: Optional[requests.Response] = None  # Initialize response as None
-        for attempt in range(self.max_retries):
-            response = self._session.request(method, url, **kwargs)
-            if response.status_code != 429:  # Not rate limited
-                return response
-            self._handle_rate_limit(attempt)
-        if response is not None:
-            return response  # Return last response if all retries failed
-        raise RequesterError("Request failed after all retries")
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse JSON, returning raw text")
+            return {"raw_text": response.text}
+
+    def _calculate_rate_limit_delay(self, attempt: int) -> float:
+        """
+        Calculate the delay for rate limiting based on the attempt number.
+
+        This method uses an exponential backoff strategy to determine
+        the delay time for rate-limited requests.
+
+        Args:
+            attempt (int): The current attempt number (0-indexed).
+
+        Returns:
+            float: The calculated delay in seconds.
+        """
+        return self.rate_limit_delay * (self.retry_backoff**attempt)
 
     def _handle_rate_limit(self, attempt: int) -> None:
         """
-        Handles rate limiting by implementing exponential backoff.
+        Handle rate limiting by implementing exponential backoff.
+
+        This method calculates the appropriate delay using _calculate_rate_limit_delay,
+        logs a warning message, and then waits for the calculated delay.
 
         Args:
-            attempt (int): The current attempt number.
+            attempt (int): The current attempt number (0-indexed).
+
+        Returns:
+            None
         """
-        retry_after = self.rate_limit_delay * (self.retry_backoff**attempt)
+        retry_after = self._calculate_rate_limit_delay(attempt)
         logger.warning(f"Rate limited. Retrying after {retry_after} seconds.")
         time.sleep(retry_after)
 
@@ -277,9 +294,3 @@ class Requester:
             raise UnprocessableEntity("The request parameters are invalid.")
         elif response.status_code >= 400:
             raise RequesterError(f"HTTP error {response.status_code}: {response.text}")
-
-    def __del__(self):
-        """
-        Ensures the session is closed when the Requester object is destroyed.
-        """
-        self._session.close()
