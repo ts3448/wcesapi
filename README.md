@@ -2,13 +2,6 @@
 
 wcesapi is a Python wrapper for Watermark's Course Evaluations and Surveys (CES) API. This library simplifies the process of interacting with the CES API, allowing developers to leverages object relationships within the API to efficiently retrieve and manipulate course evaluation data.
 
-## Features
-
-- Easy-to-use Python interface for the CES API
-- Object-oriented approach mirroring the API's data structure
-- Simplified authentication and request handling
-- Support for various API endpoints including accounts, projects, courses, users, and more
-
 ## Installation
 
 Currently, wcesapi is not available on PyPI. To use it, you'll need to clone the repository:
